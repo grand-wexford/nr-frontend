@@ -94,15 +94,11 @@ define([
 		onAjaxError: function (jqXHR, status, error, params) {
 			params = params || false;
 
-			var message;
-
 			if (status === "abort") { // Если сами прервали, значит не ошибка
 				return;
 			}
 
-			Core.log('Не удалось получить данные. Возможно сеть недоступна.');
-
-			message = "Ответ: \n" + jqXHR.responseText + "\n------------------------------\n Статус: \n" + status + "\n------------------------------\n Ошибка: \n" + error + "\n------------------------------\n";
+			var message = "Ответ: \n" + jqXHR.responseText + "\n------------------------------\n Статус: \n" + status + "\n------------------------------\n Ошибка: \n" + error + "\n------------------------------\n";
 
 			if (params !== false) {
 				message += "\n\n\n Параметры:\n";
@@ -111,6 +107,8 @@ define([
 				message += "\n\n\n--Запрос:\n";
 				message += this.strObj(params['data'], "", 6);
 			}
+			Core.log('Не удалось получить данные. Возможно сеть недоступна.');
+			Core.log(message);
 
 			// например, можно отправить сообщение с ошикой разработчику
 			//this.sendError(message);
@@ -165,7 +163,7 @@ define([
 			return tmp.textContent || tmp.innerText || "";
 		},
 		/**
-		 * Печатает ли нажатая на клавиатуре клавиша, что-либо на экране
+		 * Выводит ли нажатая на клавиатуре клавиша, что-либо на экран
 		 * @param {Number} key Идентификатор клавиши
 		 * @returns {Boolean}
 		 */
@@ -219,7 +217,7 @@ define([
 		},
 		/**
 		 * Является ли клиент мобильником
-		 * @returns {boolean}
+		 * @returns {Boolean}
 		 */
 		isMobile: function () {
 			return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -227,7 +225,7 @@ define([
 		/**
 		 * Подгрузка css файла
 		 * @description Возможно, никогда не понадобится
-		 * @param {type} file Путь к css-файлу
+		 * @param {String} file Путь к css-файлу
 		 */
 		CSSLoad: function (file) {
 			var link = document.createElement("link");
@@ -245,8 +243,8 @@ define([
 		},
 		/**
 		 * Конвертация массива в объект
-		 * @param {array} a
-		 * @returns {object}
+		 * @param {Array} a
+		 * @returns {Object}
 		 */
 		toObject: function (a) {
 			var o = {};

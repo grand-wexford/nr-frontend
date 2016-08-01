@@ -56,7 +56,6 @@ define( [
 			}
 			
 			return getVar;
-			
 		},
 
 		/*
@@ -108,7 +107,7 @@ define( [
 					lastV = v;
 				} );
 
-				if ( self.is_numeric( lastV ) ) {
+				if ( self._isNumeric( lastV ) ) {
 					newR = [];
 				} else {
 					newR = {};
@@ -130,7 +129,7 @@ define( [
 					this.set( arrPre, newR );
 				}
 			} else {
-				if ( self.is_numeric( key ) ) {
+				if ( self._isNumeric( key ) ) {
 					newR = [];
 				} else {
 					newR = {};
@@ -151,7 +150,7 @@ define( [
 		},
 
 		// не в Core т.к. он сюда не подключается
-		is_numeric: function ( n ) {
+		_isNumeric: function ( n ) {
 			return !isNaN( parseFloat( n ) ) && isFinite( n );
 		}
 	};

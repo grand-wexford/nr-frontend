@@ -160,7 +160,7 @@ define([
 				data: {
 					action: 'recover',
 					email: fields.email,
-					'g-recaptcha-response': ''
+					'g-recaptcha-response': '' //@todo доработать каптчу
 				},
 				callback: function (data) {
 					if (data.success === true) {
@@ -185,7 +185,6 @@ define([
 		 * Выход пользователя
 		 */
 		_onClickLogout: function () {
-			console.log('44');
 			localStorage.removeItem("access_token");
 			localStorage.removeItem("access_id");
 
@@ -276,8 +275,8 @@ define([
 		 * При клике на кнопку "Забыли пароль?"
 		 */
 		_onClickRecover: function () {
-			
 			// Рисуем каптчу
+			// @todo sitekey сейчас с soundstream.media , надо менять на нерадио
 			grecaptcha.render('reCaptcha', {
 				'sitekey': '6Lc76gsTAAAAAD3X7MMGSbZDt5nnex1ao1De4tiA',
 				'callback': this._verifyCaptchaCallback,

@@ -1,8 +1,8 @@
-requirejs.config( {
+requirejs.config({
 	urlArgs: "bust=" + Math.random(),
 	baseUrl: '.',
 	waitSeconds: 20,
-	deps: ['plugins','semantic'],
+	deps: ['plugins', 'semantic'],
 	paths: {
 		jquery: 'vendors/jquery-2.2.4.min',
 		semantic: 'vendors/semantic-ui-2.2.2/semantic.min',
@@ -26,9 +26,8 @@ requirejs.config( {
 			exports: '_'
 		}
 	}
-} );
+});
 
-var GLOBAL = {};
-	requirejs( ["js/app"], function ( App ) {
-		window.bTask = new App();
-	} );
+requirejs(["js/app"], function (App) {
+	window.bTask = new App();
+});
