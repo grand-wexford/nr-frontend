@@ -1,0 +1,513 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	/**
+	 * Модуль для работы с даными пациента
+	 * @module User
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+	var User = Backbone.View.extend( {
+		el: 'body',
+		/**
+		 * События.
+		 */
+		events: {
+			"click .sex[value=f]": "formCorrect",
+			"click .sex[value=m]": "onClickMan",
+			"change .age_dwmy, [name=pregnancy], [name=lactation]": "formCorrect",
+			"change [name=gestation]": "onChangeGestation",
+			"change [name=trimester]": "onChangeTrimester",
+			"keyup .age": "onEditAge",
+			"keyup .growth, .weight": "onEditDigit",
+			"click .disease-add": "onClickDiseaseAdd",
+			"click .disease-remove": "onClickDiseaseRemove",
+			"click .user-button": "onClickUser"
+		},
+		_$el: {
+			front: $( '.front' )
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'User:setUserInfo', this.setUserInfo, this );
+			Dispatcher.on( 'User:clearUserInfo', this.clearUserInfo, this );
+			Dispatcher.on( 'User:closeUserInfo', this.closeUserInfo, this );
+			Dispatcher.on( 'User:setActive', this.setActive, this );
+			Dispatcher.on( 'User:resizer', this.resizer, this );
+			Dispatcher.on( 'User:setDWMYFromDays', this.setDWMYFromDays, this );
+
+			if ( Core.objectLength( GL.get( 'user_info' ) ) > 0 ) {
+				this.setActive();
+			}
+
+			$( '.age' ).trigger( 'keyup' );
+			$( '.user-button' ).show();
+		},
+		/**
+		 * Делает иконку пациента активной.
+		 * @param {boolean} state
+		 */
+		setActive: function ( state ) {
+			if ( state !== false ) {
+				$( '.glyphicon-user' ).addClass( 'user-icon-active' );
+			} else {
+				$( '.glyphicon-user' ).removeClass( 'user-icon-active' );
+			}
+		},
+		/**
+		 * При изменении срока гестации.
+		 * @param {object} event
+		 * @listens "change [name=gestation]"
+		 */
+		onChangeGestation: function ( event ) {
+			var
+					gestation = $( event.currentTarget ).val(),
+					trimester;
+
+			if ( gestation > 0 && gestation <= 14 ) {
+				trimester = 1;
+			} else if ( gestation >= 15 && gestation <= 26 ) {
+				trimester = 2;
+			} else if ( gestation >= 27 && gestation <= 44 ) {
+				trimester = 3;
+			} else {
+				trimester = '';
+			}
+
+			$( '[name=trimester]' ).val( trimester );
+			this.formCorrect();
+		},
+		/**
+		 * При изменении триместра.
+		 * @param {object} event
+		 * @listens "change [name=trimester]"
+		 */
+		onChangeTrimester: function () {
+			$( '[name=gestation]' ).val( '' );
+			this.formCorrect();
+		},
+		/**
+		 * Исправляет размеры.
+		 */
+		resizer: function () {
+			if ( $( '.user-holder' ).length > 0 ) {
+				var pageHeight = $( '.page' ).outerHeight() + 66;
+				this._$el.userHolder.outerHeight( pageHeight );
+				$( '.user-text' ).outerHeight( pageHeight - 109 );
+			}
+		},
+		/**
+		 * При клике на иконку Пациент.
+		 * @listens "click .user-button"
+		 */
+		onClickUser: function () {
+			var self = this;
+
+			if ( $( '.user-holder' ).length === 0 ) {
+				this._$el.userHolder = $( '<div>' ).addClass( 'user-holder' );
+				this._$el.userHolder.prependTo( '.sf-conteiner' );
+			} else {
+				this._$el.userHolder = $( '.user-holder' );
+			}
+//			Пример того, как перейти из мобильного приложения в почтоыую программу.
+//			window.open( 'mailto:wexes@yandex.ru?subject=[Pharm Expert] Лист назначения&body=Это лист, все дела', '_blank' );
+//			return;
+
+			Core.loadPage( 'User', this._$el.userHolder, function () {
+				if ( GL.get( 'PX' ) === 'P' ) {personal_data
+					$( '.user-title' ).text( Core.getText( 'personal_data' ) );
+				} else if ( GL.get( 'PX' ) === 'D' ) {
+					$( '.user-title' ).text( Core.getText( 'patient_data' ) );
+				}
+				GL.set( 'state', 'user_info' );
+				self.printUserInfo();
+				self.resizer();
+			} );
+		},
+		/**
+		 * При клике на иконку "Добавить заболевание".
+		 * @listens "click .disease-add"
+		 */
+		onClickDiseaseAdd: function ( event ) {
+			var
+					$input = $( event.currentTarget ).closest( '.disease-holder' ).find( '.disease:last' ),
+					$new_input = $input.clone();
+
+			$new_input.val( '' );
+			$inputRemovIcon = $( '<div class="input-remove-icon disease-remove" title="'+Core.getText( 'delete' )+'"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></div>' );
+			$input.after( $new_input ).after( $inputRemovIcon );
+		},
+		/**
+		 * При клике на иконку "Удалить заболевание".
+		 * @listens "click .disease-remove"
+		 */
+		onClickDiseaseRemove: function ( event ) {
+			$( event.currentTarget ).next( 'input' ).remove();
+			$( event.currentTarget ).remove();
+		},
+		/**
+		 * При выборе пола: М.
+		 * @listens "click .sex[value=m]"
+		 */
+		onClickMan: function () {
+			$( '[name="gestation"]' ).attr( 'disabled', 'disabled' ).val( '' );
+			$( '[name="trimester"]' ).attr( 'disabled', 'disabled' ).val( '' );
+			$( '[name="pregnancy"]' ).attr( {'disabled': 'disabled', 'checked': false} );
+			$( '[name="lactation"]' ).attr( {'disabled': 'disabled', 'checked': false} );
+		},
+		/**
+		 * Корректирует форму в зависимости от внесённых данных.
+		 * Иногда вызывается по событиям.
+		 * @listens "click .sex[value=f]"
+		 * @listens "change .age_dwmy, [name=pregnancy], [name=lactation]"
+		 */
+		formCorrect: function () {
+			if ( ( $( '[name="pregnancy"]' ).is( ':checked' ) || $( '[name="lactation"]' ).is( ':checked' ) || $( '[name="gestation"]' ).val() !== "" || $( '[name="trimester"]' ).val() !== "" ) && !$( '.sex' ).is( ':checked' ) ) {
+				$( '.sex[value="f"]' ).prop( 'checked', 'checked' );
+			}
+
+			if ( ( $( '[name="gestation"]' ).val() !== "" || $( '[name="trimester"]' ).val() !== "" ) && !$( '[name="pregnancy"]' ).is( ':checked' ) ) {
+				$( '[name="pregnancy"]' ).prop( 'checked', 'checked' );
+			}
+
+			if ( this.isWoman15() ) {
+				$( '[name="pregnancy"]' ).attr( 'disabled', false );
+				$( '[name="gestation"]' ).attr( 'disabled', false );
+				$( '[name="trimester"]' ).attr( 'disabled', false );
+				$( '[name="lactation"]' ).attr( 'disabled', false );
+			} else {
+				$( '[name="pregnancy"]' ).attr( {'disabled': 'disabled'} );
+				$( '[name="gestation"]' ).attr( {'disabled': 'disabled'} );
+				$( '[name="trimester"]' ).attr( {'disabled': 'disabled'} );
+				$( '[name="lactation"]' ).attr( {'disabled': 'disabled'} );
+			}
+
+			if ( ( $( '.age' ).val() > 17 && $( '.age_dwmy' ).find( ':selected' ).attr( 'value' ) === 'y' ) || $( '.age' ).val() === '' ) {
+				$( '[name="driving"]' ).attr( 'disabled', false );
+			} else {
+				$( '[name="driving"]' ).attr( {'disabled': 'disabled'} );
+			}
+		},
+		/*
+		 * Является ли пациент женщиной старше 15 лет (Может быть беременной и кормить грудью).
+		 * @returns {boolean}
+		 */
+		isWoman15: function () {
+			return ( $( '.sex:checked' ).val() !== 'm' && ( ( $( '.age' ).val() >= 14 && $( '.age' ).val() <= 55 && $( '.age_dwmy' ).find( ':selected' ).attr( 'value' ) === 'y' ) || $( '.age' ).val() === '' ) );
+		},
+		/**
+		 * Устанавливает необходимые значения возраста, основываясь на кол-ве дней.
+		 * @param {string} days Кол-во дней
+		 * @returns {undefined}
+		 */
+		setDWMYFromDays: function ( days ) {
+			if ( !days || days <= 0 ) {
+				return;
+			}
+
+			var
+					age_dwmy,
+					age_normal,
+					age;
+
+			if ( days < 30 ) {
+				age_dwmy = 'd';
+				age = days;
+			} else if ( days >= 30 && days < 365 ) {
+				age_dwmy = 'm';
+				age = days / 30;
+			} else if ( days >= 365 ) {
+				age_dwmy = 'y';
+				age = days / 365;
+			}
+
+			age = Math.floor( age );
+			age_normal = age + " " + Core.getNumEnding( age, age_dwmy );
+			GL.set( ['user_info', 'age'], age );
+			GL.set( ['user_info', 'age_dwmy'], age_dwmy );
+			GL.set( ['user_info', 'age_normal'], age_normal );
+		},
+		/**
+		 * Возвращает кол-во дней, основываясь на данных формы.
+		 * @returns {string}  Кол-во дней.
+		 */
+		getAgeDays: function () {
+			var age = this._$el.userHolder.find( 'input[name=age]' ).val(),
+					age_dwmy = this._$el.userHolder.find( '.age_dwmy' ).find( ':selected' ).attr( 'value' ),
+					age_days;
+
+			switch ( age_dwmy ) {
+				case 'd':
+					age_days = age;
+					break;
+
+				case 'w':
+					age_days = age * 7;
+					break;
+
+				case 'm':
+					age_days = age * 30;
+					break;
+
+				case 'y':
+					age_days = age * 365;
+					break;
+			}
+
+			return age_days;
+		},
+		/**
+		 * Устанавливает информацию о пользователе, основываясь на данных формы.
+		 */
+		setUserInfo: function () {
+			var
+					dis = [],
+					dis2 = [],
+					dis_count = 0;
+
+			$.each( $( 'input[name="disease[]"]' ), function ( k, v ) {
+				if ( $( v ).val() !== "" ) {
+					dis_count++;
+					dis.push( $( v ).val() );
+				}
+			} );
+
+			$.each( $( 'input[name="disease2[]"]' ), function ( k, v ) {
+				if ( $( v ).val() !== "" ) {
+					dis_count++;
+					dis2.push( $( v ).val() );
+				}
+			} );
+
+			if (
+					this._$el.userHolder.find( 'input[type="checkbox"]:checked' ).length > 0 ||
+					this._$el.userHolder.find( 'input[type="radio"]:checked' ).length > 0 ||
+					this._$el.userHolder.find( 'input[name=age]' ).val() !== "" ||
+					this._$el.userHolder.find( 'input[name=growth]' ).val() !== "" ||
+					this._$el.userHolder.find( 'input[name=weight]' ).val() !== "" ||
+					dis_count > 0
+					) {
+				this.setActive();
+			} else {
+				this.setActive( false );
+				return;
+			}
+
+			this._$el.userHolder.find( 'input[type="checkbox"]:disabled' ).attr( 'checked', false );
+
+			GL.set( 'user_info', {
+				'age': this._$el.userHolder.find( 'input[name=age]' ).val(),
+				'age_dwmy': this._$el.userHolder.find( '.age_dwmy' ).find( ':selected' ).attr( 'value' ),
+				'age_days': this.getAgeDays(),
+				'age_normal': this._$el.userHolder.find( 'input[name=age]' ).val() + " " + Core.getNumEnding( this._$el.userHolder.find( 'input[name=age]' ).val(),  this._$el.userHolder.find( '.age_dwmy' ).find( ':selected' ).attr( 'value' ) ),
+				'sex': this._$el.userHolder.find( 'input[name=sex]:checked' ).val(),
+				'growth': this._$el.userHolder.find( 'input[name=growth]' ).val(),
+				'weight': this._$el.userHolder.find( 'input[name=weight]' ).val(),
+				'pregnancy': this._$el.userHolder.find( 'input[name=pregnancy]' ).is( ':checked' ) ? '1' : '0',
+				'lactation': this._$el.userHolder.find( 'input[name=lactation]' ).is( ':checked' ) ? '1' : '0',
+				'gestation': this._$el.userHolder.find( '[name=gestation]' ).find( ':selected' ).attr( 'value' ),
+				'trimester': this._$el.userHolder.find( '[name=trimester]' ).find( ':selected' ).attr( 'value' ),
+				'driving': this._$el.userHolder.find( 'input[name=driving]' ).is( ':checked' ) ? '1' : '0',
+				'disease': dis,
+				'disease2': dis2
+			} );
+		},
+		/**
+		 * Заполняет форму информацией о пациенте.
+		 */
+		printUserInfo: function () {
+			var
+					self = this,
+					user_info = GL.get( 'user_info' );
+
+			if ( user_info.age && user_info.age !== "" ) {
+				this._$el.userHolder.find( 'input[name=age]' ).val( user_info.age );
+			}
+
+			if ( user_info.growth && user_info.growth !== "" ) {
+				this._$el.userHolder.find( 'input[name=growth]' ).val( user_info.growth );
+			}
+
+			if ( user_info.weight && user_info.weight !== "" ) {
+				this._$el.userHolder.find( 'input[name=weight]' ).val( user_info.weight );
+			}
+
+			if ( user_info.gestation && user_info.gestation !== "" ) {
+				this._$el.userHolder.find( 'select[name=gestation]' ).val( user_info.gestation );
+			}
+
+			if ( user_info.trimester && user_info.trimester !== "" ) {
+				this._$el.userHolder.find( 'select[name=trimester]' ).val( user_info.trimester );
+			}
+
+			if ( user_info.driving === "1" ) {
+				this._$el.userHolder.find( 'input[name=driving]' ).prop( 'checked', true );
+			}
+
+			if ( user_info.lactation === "1" ) {
+				this._$el.userHolder.find( 'input[name=lactation]' ).prop( 'checked', true );
+			}
+
+			if ( user_info.pregnancy === "1" ) {
+				this._$el.userHolder.find( 'input[name=pregnancy]' ).prop( 'checked', true );
+			}
+
+			if ( user_info.sex && user_info.sex !== "" ) {
+				this._$el.userHolder.find( '.sex[value="' + user_info.sex + '"]' ).prop( 'checked', true );
+			}
+
+			if ( user_info.age_dwmy && user_info.age_dwmy !== "" ) {
+				this._$el.userHolder.find( '.age_dwmy' ).find( '[value="' + user_info.age_dwmy + '"]' ).prop( 'selected', true ).text( Core.getNumEnding( user_info.age, user_info.age_dwmy ) );
+			}
+
+			this.renderDisease();
+
+			setTimeout( function ( ) {
+				self.formCorrect();
+			}, 1000 );
+		},
+		/**
+		 * Строит формы с заболеваниями.
+		 */
+		renderDisease: function () {
+			var
+					self = this,
+					diseaseForms = [ 'disease', 'disease2' ],
+					$input,
+					$new_input;
+			
+			$.each( diseaseForms, function ( key, v ) {
+				if ( GL.get( ['user_info', v] ) ) {
+					$.each( GL.get( ['user_info', v] ), function ( key, val ) {
+						if ( key == 0 ) {
+							self._$el.userHolder.find( '.disease-holder-' + v ).find( '.disease:last' ).val( val );
+						} else {
+							$input = self._$el.userHolder.find( '.disease-holder-' + v ).find( '.disease:last' );
+							$new_input = $input.clone();
+							$new_input.val( val );
+							$input.after( $new_input );
+						}
+					} );
+				}
+			} );
+		},
+		/**
+		 * Закрывает окно с информацией о пациенте.
+		 * @listens "User:closeUserInfo"
+		 */
+		closeUserInfo: function () {
+			this._$el.userHolder.slidePage( 'hide' );
+			this.setUserInfo();
+			Dispatcher.trigger( 'App:getInfoPreparation' );
+		},
+		/**
+		 * Очищает окно с информацией о пациенте.
+		 * @listens "User:clearUserInfo"
+		 */
+		clearUserInfo: function () {
+			this._$el.userHolder.find( 'input[type="checkbox"]' ).attr( 'checked', false );
+			this._$el.userHolder.find( 'input[type="text"]' ).val( '' ).attr( 'value', '' );
+			this._$el.userHolder.find( 'input[type="radio"]' ).attr( 'checked', false );
+			this._$el.userHolder.find( 'select' ).val( "" );
+			this._$el.userHolder.find( 'select' ).find( 'option:first' ).attr( 'selected', 'selected' );
+
+			$( '.age_dwmy' ).find( ':disabled' ).attr( 'disabled', false );
+			$( '[name="pregnancy"]' ).attr( 'disabled', false );
+			$( '[name="gestation"]' ).attr( 'disabled', false );
+			$( '[name="trimester"]' ).attr( 'disabled', false );
+			$( '[name="lactation"]' ).attr( 'disabled', false );
+			$( '[name="driving"]' ).attr( 'disabled', false );
+
+			$( '.disease-remove' ).next( 'input' ).remove();
+			$( '.disease-remove' ).remove();
+
+			GL.set( 'user_info', {} );
+		},
+		/**
+		 * При редактировании полей веса и роста.
+		 * @listens "keyup .growth, .weight"
+		 * @param {object} event
+		 */
+		onEditDigit: function ( event ) {
+			Core.correctDigitInput( event );
+		},
+		/**
+		 * При редактировании возраста.
+		 * @listens "keyup .age"
+		 * @param {object} event
+		 */
+		onEditAge: function ( event ) {
+			var
+					value = $( event.currentTarget ).val(),
+					newValue = value,
+					enabled_dmy = [],
+					parts,
+					dots;
+
+			newValue = newValue.replace( /[^\d\.]/g, "" );
+			dots = newValue.match( /\./g ) ? newValue.match( /\./g ).length : false;
+
+			if ( newValue.charAt( 0 ) === '0' || newValue.charAt( 0 ) === '.' ) { // не может начинаться с точки и нуля
+				newValue = newValue.slice( 1 );
+			}
+
+			if ( dots > 1 ) { // больше одной точки вводить не даём
+				newValue = newValue.substr( 0, newValue.lastIndexOf( "." ) );
+			}
+
+			if ( newValue <= 12 ) { // все
+				enabled_dmy = ['d', 'w', 'm', 'y'];
+			} else if ( newValue > 12 & newValue <= 31 ) { // кроме месяца
+				enabled_dmy = ['d', 'w', 'y'];
+			} else if ( newValue > 31 & newValue <= 40 ) { // кроме месяца и дней
+				enabled_dmy = ['w', 'y'];
+			} else if ( newValue > 40 & newValue <= 121 ) { // кроме месяца, дней и недель
+				enabled_dmy = ['y'];
+			} else if ( newValue > 121 ) { // не может быть
+				enabled_dmy = false;
+				newValue = newValue.slice( 0, -1 );
+			}
+
+			if ( dots > 0 ) {
+				if ( enabled_dmy.indexOf( 'd' ) !== -1 ) {
+					enabled_dmy.splice( enabled_dmy.indexOf( 'd' ), 1 ); // дробные дни вводить не даём ( удаляем из массива d)
+				}
+
+				parts = newValue.split( '.' );
+
+				if ( parts[1] && parts[1].length > 1 ) { // только 1 символ после запятой
+					newValue = newValue.slice( 0, -1 );
+				}
+			}
+
+			var options = $( '.age_dwmy' ).find( 'option' );
+
+			if ( enabled_dmy !== false ) {
+				$.each( options, function ( key, val ) {
+					if ( enabled_dmy.indexOf( $( val ).attr( 'value' ) ) == -1 ) {
+						$( val ).attr( {'disabled': true, 'selected': false} );
+					} else {
+						$( val ).attr( 'disabled', false );
+					}
+					$( val ).text( Core.getNumEnding( newValue, $( val ).attr( 'value' ) ) );
+				} );
+			}
+
+			if ( value !== newValue ) {
+				$( event.currentTarget ).val( newValue );
+			}
+
+			this.formCorrect();
+			return newValue;
+		}
+	} );
+	return User;
+} );

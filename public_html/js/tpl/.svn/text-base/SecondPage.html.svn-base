@@ -1,0 +1,9 @@
+			<div class="page-holder">
+				<div class="page-title-holder <%=titleClass%>">
+					<blockquote>
+						<p class="page-title"><%=title%></p>
+						<footer><%=subTitle%></footer>
+					</blockquote>
+				</div>
+				<div class="page-result"><%=result%></div>
+			</div>

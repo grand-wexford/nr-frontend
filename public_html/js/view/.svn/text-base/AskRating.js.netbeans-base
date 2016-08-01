@@ -1,0 +1,140 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	/**
+	 * Окно с просьбой оценить приложение
+	 * @module AskRating
+	 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 * 
+	 */
+	var AskRating = Backbone.View.extend( {
+		el: 'body',
+		_$el: {
+			page: $( '.page' )
+		},
+		/**
+		 * События.
+		 */
+		events: {
+			"click .review-like, .review-like *": "onClickLike",
+			"click .review-report, .review-report *": "onClickReport",
+			"click .ask-like-no": "onClickAskLikeNo",
+			"click .ask-like-yes": "onClickAskLikeYes",
+			"click .report-send": "onClickReportSend",
+			"click .report-sended": "onClickReportSended"
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'AskRating:askLike', this.askLike, this );
+			GL.set( 'NOT_ASK_LIKE', window.localStorage.getItem( "NOT_ASK_LIKE" ) );
+		},
+		/**
+		 * Запускает окно с предложением оставить отзыв.
+		 * Функция является промежуточной, между модулями Device и Alert. Нужна для того, чтобы не запускать окно, если модуль AskRating не подключен.
+		 */
+		askLike: function () {
+			//Dispatcher.trigger( 'Alert:show', 'ASK_LIKE', '', 'Хотите оставить отзыв о приложении?'  );
+			Dispatcher.trigger( 'Alert:show', {
+				color: 'success',
+				text: '<div><BR><div class="ask-like-never-holder"><div class="checkbox"><label><input type="checkbox"> '+Core.getText( 'dont_ask' )+'</label></div></div>',
+				buttons: [{
+						text: 'Нет',
+						color: 'default',
+						class: 'ask-like-no'
+					},
+					{
+						text: 'Да',
+						color: 'success',
+						class: 'ask-like-yes'
+					}]
+			} );
+		},
+		/**
+		 * Срабатывает при нажатии на кнопку "Отправить сообщение".
+		 * @listens "click .report-send"
+		 */
+		onClickReportSend: function () {
+			var reportText = $( '.report-text' ) && $( '.report-text' ).val() ? $( '.report-text' ).val().trim() : '';
+			
+			if ( reportText === "" ) {
+				Dispatcher.trigger( 'Alert:show', {
+					title: Core.getText( 'write_message' )
+				} );
+			} else {
+				Core.sendReport( reportText );
+				Dispatcher.trigger( 'Alert:show', {
+					title: Core.getText( 'message_sent' ),
+					text: Core.getText( 'message_sent_text' ),
+					color: 'success',
+					buttons: [{
+							text: Core.getText( 'ok' ),
+							color: 'primary',
+							class: 'report-sended'
+						}]
+				} );
+			}
+		},
+		/**
+		 * Срабатывает при нажатии на кнопку "Ок", после отправки сообщения.
+		 * @listens "click .report-sended"
+		 */
+		onClickReportSended: function () {
+			Dispatcher.trigger( 'Alert:hide' );
+			$( '.report-text' ).val( '' );
+			Core.allPagesClose();
+			Dispatcher.trigger( 'App:toggleListView', 'view' );
+		},
+		/**
+		 * Срабатывает при клике на кнопку "Нравится".
+		 * @listens "click .review-like, .review-like *"
+		 */
+		onClickLike: function ( ) {
+			if ( Core.isMobile() ) {
+				window.open( 'market://details?id=com.socmedica.pharmexpert', '_blank' );
+			} else {
+				window.open( 'https://play.google.com/store/apps/details?id=com.socmedica.pharmexpert', '_blank' );
+			}
+			Core.allPagesClose();
+			Dispatcher.trigger( 'App:toggleListView', 'view' );
+		},
+		/**
+		 * Срабатывает при клике на кнопку "Сообщить о проблеме".
+		 * @listens "click .review-report, .review-report *"
+		 */
+		onClickReport: function () {
+			Core.loadPage( 'Report', this._$el.page );
+		},
+		/**
+		 * Срабатывает при клике на кнопку "Не нравится".
+		 * @listens "click .ask-like-no"
+		 */
+		onClickAskLikeNo: function () {
+			if ( $( '.ask-like-never-holder' ).find( 'input[type="checkbox"]:checked' ).length ) {
+				window.localStorage.setItem( "NOT_ASK_LIKE", "true" );
+				GL.set( 'NOT_ASK_LIKE', "true" );
+			}
+
+			if ( Core.isMobile() && navigator && navigator.app && navigator.app.exitApp ) {
+				navigator.app.exitApp();
+			}
+		},
+		/**
+		 * Срабатывает при клике на кнопку "Нравится".
+		 * @listens "click .ask-like-yes"
+		 */
+		onClickAskLikeYes: function () {
+			Dispatcher.trigger( 'Alert:hide' );
+			Core.loadPage( 'Review',  this._$el.page );
+		}
+	} );
+	return AskRating;
+} );

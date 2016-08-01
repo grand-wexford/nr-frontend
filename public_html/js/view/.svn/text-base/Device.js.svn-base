@@ -1,0 +1,126 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'js/modules/GL',
+	'fastclick'
+], function ( Dispatcher, GL, FastClick  ) {
+	/**
+	 * Модуль с нативными функциями для работы в Android
+	 * @module Device
+
+	 * @requires Dispatcher
+	 * @requires GL
+	 * @requires FastClick
+	 * 
+	 */
+	var Device = Backbone.View.extend( {
+		el: 'body',
+		 /** События */
+		events: {
+			"click [rel='external']": "onClickExternal"
+		},
+		_$el: {
+			flipContainer: $( '.flip-container' ),
+			buttonBottom: $( '.buttons' ).find( '.btn' ),
+			menuHolder: $( '.menu-holder' )
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'Device:onExitApp', this.onExitApp, this ); // триггер нужен только потому, что в функции onNativeBackClick отсутствует this
+			document.addEventListener( "backbutton", this.onNativeBackClick, false );
+			//FastClick.attach( document.body );
+			window.addEventListener( 'load', function () {
+				new FastClick( document.body );
+			}, false );
+
+			this._$el.menuHolder.on( 'swipe', function ( e, Dx, Dy ) {
+				if ( Dx < 0 ) {
+					Dispatcher.trigger( 'Menu:onClickMenuHide' );
+				}
+			} );
+		},
+		
+		/**
+		 * При клике на внешнюю ссылку.
+		 * @param {object} event
+		 * @listens "click [rel='external']"
+		 * @returns {Boolean}
+		 */
+		onClickExternal: function ( event ) {
+			event.preventDefault();
+			if ( navigator && navigator.app && navigator.app.loadUrl ) {
+				navigator.app.loadUrl( $( event.currentTarget ).attr( 'href' ), { openExternal: true } );
+				return false;
+			}
+		},
+		/**
+		 * При нажатии на кнопку "Назад" андроида.
+		 * @listens "backbutton"
+		 */
+		onNativeBackClick: function () {
+			if ( $( '.helper-block' ).is( ':visible' ) ) {
+				Dispatcher.trigger( 'Helper:close' );
+				Dispatcher.trigger( 'Helper:FH' );
+				return;
+			}
+
+			if ( $( '.page' ).is( ':visible' ) ) {
+				Dispatcher.trigger( 'App:toggleListView', 'back_to_view' );
+				return $( '.page' ).slidePage( 'hide' );
+			}
+			
+			if ( $( '.user-holder' ).is( ':visible' ) ) {
+				Dispatcher.trigger( 'App:toggleListView', 'back_from_user' );
+				return;
+			}
+
+			if ( $( '.menu-holder' ).is( ':visible' ) ) {
+				Dispatcher.trigger( 'Menu:onClickMenuHide' );
+				return;
+			}
+			if ( $( '.alert' ).is( ':visible' ) && !$( '.alert' ).hasClass( 'PX_SELECTOR' ) ) {
+				Dispatcher.trigger( 'Alert:hide' );
+				return;
+			}
+			
+			// Сомнительный кусок, отсюда и до конца функции.
+			switch ( GL.get( 'state' ) ) {
+				case GL.get( 'default_state' ):
+					Dispatcher.trigger( 'Device:onExitApp' );
+					return;
+					break;
+
+				case '':
+					Dispatcher.trigger( 'Device:onExitApp' );
+					return;
+					break;
+
+				default:
+					// Сомнительное решение. Предполагается, что на обоих сторонах первая кнопка всегда возвращает назад. Пока это так.
+					if ( $( '.flip-container' ).hasClass( 'flip' ) ) {
+						$( '.buttons' ).find( '.btn' ).eq( 2 ).trigger( "click" );
+						return;
+					} else {
+						$( '.buttons' ).find( '.btn' ).eq( 0 ).trigger( "click" );
+						return;
+						break;
+					}
+			}
+			Dispatcher.trigger( 'Device:onExitApp' );// ничего не подошло - выходим
+		},
+		/**
+		 * При выходе из приложения.
+		 */
+		onExitApp: function () {
+			if ( GL.get( 'NOT_ASK_LIKE' ) === "true" ) {
+				navigator.app.exitApp();
+			} else {
+				Dispatcher.trigger( 'AskRating:askLike' );
+			}
+		}
+	});
+	return Device;
+} );

@@ -1,0 +1,213 @@
+define( [
+
+], function (  ) {
+
+	/**
+	 * Модуль для работы с глобальными переменными
+	 * @module GL
+	 * @todo Почему не наследуется от Backbone.View?
+	 */
+
+	return {
+		/**
+		 * @property {object} _GL				- Значения глобальных переменных по-умолчанию.
+		 * @property {string} _GL.state				- Начальное состояние системы.
+		 * @property {string} _GL.default_state		- Состояние системы по-умолчанию.
+		 * @property {boolean} _GL.isLoading		- Происходит ли загрузка в данный момент. Состояние меняется в Core.loading.
+		 * @property {boolean} _GL.isAlertOpen		- Открыто ли всплывающее окно. Состояние меняется в Alert.show / Alert.hide.
+		 * @property {number|false}  _GL.fromGroup	- От какой группы препаратов происходит работа с дозировками.
+		 * @property {1|0}  _GL.history			- получение истории
+		 * @property {string}  _GL.text				- Текст поля $textarea.val(). Нужно для состояния area. В данный момент не используется.
+		 * @property {array}  _GL.names			- массив названий
+		 * @property {array}  _GL.groups			- массив групп
+		 * @property {string}  _GL.currentElement		- выделеный элемент
+		 * @property {string}  _GL.descClass		- Класс элементов списка. Если описания включены профилем, значение назначается модулем Description. 
+		 * @property {object}  _GL.statuses_uniq		- уникальные статусы присутствующие в данной выборке
+		 * @property {object}  _GL.elements			- данные с сервера
+		 * @property {object}  _GL.settings			- настройки
+		 * @property {object}  _GL.dosage_all		- все дозировки
+		 * @property {object}  _GL.descriptions		- описания
+		 * @property {object}  _GL.titles			- заголовки
+		 * @property {object}  _GL.maxs			- наихудшие оценки для предупреждения
+		 * @property {object}  _GL.warnings			- взаимодействия
+		 * @property {object}  _GL.user_info			- информация о пользователе
+		 * @property {D|P}  _GL.PX				- вариант интерфейса D/P (доктор/пациент),
+		 * @property {string}  _GL.active_language	- язык
+		 * @property {string}  _GL.profile			- версия (pro, standart, simple)
+		 * @property {string}  _GL.testKey			- ключ доступа
+		 */
+
+		_GL: {
+			'state': '',
+			'default_state': 'view',
+			'isLoading': false,
+			'isAlertOpen': false,
+			'fromGroup': false,
+			'history': 0,
+			'text': '',
+			'names': [],
+			'groups': [],
+			'currentElement': '',
+			'descClass': '',
+			'statuses_uniq': {},
+			'elements': {},
+			'settings': {},
+			'dosage_all': {},
+			'descriptions': {},
+			'titles': {},
+			'maxs': {},
+			'warnings': {},
+			'user_info': {},
+			'PX': window.localStorage.getItem( "PX" ),
+			'profile': 'standart',
+			'active_language': window.localStorage.getItem( "active_language" ),
+			'testKey': ''
+
+		},
+
+		/*
+		 * Возвращает значение глобальной переменной.
+		 * @param {string} key Ключ переменной.
+		 * @return {string} Значение переменной.
+		 */
+		get: function ( key ) {
+			var GlVar = '';
+			var getVar = '';
+			var self = this; // нужно
+			var isExists = true;
+
+			if ( Array.isArray( key ) ) {
+				$.each( key, function ( k, v ) {
+					GlVar = GlVar + '[\'' + v + '\']';
+					
+					if ( !eval( 'self._GL' + GlVar ) ) {
+						isExists = false;
+						return false;
+					}
+				} );
+				
+				if ( !isExists ) {
+					getVar = undefined;
+				} else {
+					getVar = eval( 'this._GL' + GlVar );
+				}
+			} else {
+				getVar = this._GL[key];
+			}
+			
+			return getVar;
+			
+		},
+		get2: function ( key ) {
+			return this._GL[key];
+		},
+		/*
+		 * Устанавливает значение глобальной переменной.
+		 * @param {string} key Ключ переменной.
+		 * @param {string} value Новое значение переменной.
+		 */
+		set: function ( key, value ) {
+			var GlVar = '';
+			var self = this; // нужно
+			var i = 0;
+			if ( Array.isArray( key ) ) {
+				$.each( key, function ( k, v ) {
+					i++;
+					GlVar = GlVar + '[\'' + v + '\']';
+
+					if ( !eval( 'self._GL' + GlVar ) && key.length > i ) {
+						eval( 'self._GL' + GlVar + ' = []' );
+					}
+				} );
+				eval( 'this._GL' + GlVar + ' = ' + JSON.stringify( value ) );
+			} else {
+				this._GL[key] = value;
+			}
+		},
+		/*
+		 * Удаляет значение глобальной переменной.
+		 * @param {string} key ключ переменной.
+		 */
+		del: function ( key ) {
+			var GlVar = '',
+					self = this,
+					GlVarPre = '',
+					arrPre = [],
+					lastV,
+					i = 0,
+					pre,
+					newR;
+
+			if ( Array.isArray( key ) ) {
+				$.each( key, function ( k, v ) {
+					i++;
+
+					GlVar = GlVar + '[\'' + v + '\']';
+					if ( key.length > i ) {
+						GlVarPre = GlVarPre + '[\'' + v + '\']';
+						arrPre.push( v );
+					}
+					lastV = v;
+				} );
+
+				if ( self.is_numeric( lastV ) ) {
+					newR = [];
+				} else {
+					newR = {};
+				}
+
+				pre = eval( 'this._GL' + GlVarPre );
+
+				if ( typeof pre !== 'undefined' ) {
+					$.each( pre, function ( k, v ) {
+						if ( k !== lastV ) {
+							if ( Array.isArray( newR ) ) {
+								newR.push( v );
+							} else {
+								newR[k] = pre[k];
+							}
+						}
+					} );
+
+					this.set( arrPre, newR );
+				}
+			} else {
+
+				if ( self.is_numeric( key ) ) {
+					newR = [];
+				} else {
+					newR = {};
+				}
+
+				$.each( this._GL, function ( k, v ) {
+					if ( k !== key ) {
+						if ( Array.isArray( newR ) ) {
+							newR.push( v );
+						} else {
+							newR[k] = v;
+						}
+					}
+				} );
+
+				this._GL = newR;
+			}
+		},
+		/*
+		 * Возвращает значение параметра tn
+		 * @param {number} index ключ препарата.
+		 * @return {number} Значение параметра tn.
+		 * @todo Выглядит неадекватно. Разобраться, возможно это вообще не нужно.
+		 */
+		getTN: function ( index ) {
+			if ( this.get( ['names', index, 'tn'] ) ) {
+				return this.get( ['names', index, 'tn'] );
+			} else {
+				this.get( ['elements', index, 'tn'] );
+			}
+		},
+		// не в Core т.к. он сюда не подключается
+		is_numeric: function ( n ) {
+			return !isNaN( parseFloat( n ) ) && isFinite( n );
+		}
+	};
+} );

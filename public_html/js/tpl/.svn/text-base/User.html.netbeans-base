@@ -1,0 +1,211 @@
+<div class="user-title"></div>
+<div class='user-text'>
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title input-40"><span><%=text.age%>:</span></span>
+				<span class="input-values">
+					<input class="data-input age" type="text" value="" name="age" maxlength="4" >
+					<select class="data-select age_dwmy" name="age_dwmy">
+						<option value='d' class="age_dwmy_d"><%=text.cases_d_2%></option>
+						<option value='w' class="age_dwmy_w"><%=text.cases_w_2%></option>
+						<option value='m' class="age_dwmy_m"><%=text.cases_m_2%></option>
+						<option value='y' class="age_dwmy_y" selected="selected"><%=text.cases_y_2%></option>
+					</select>
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title input-40"><span><%=text.sex%>:</span></span>
+				<span class="input-values ">
+					<label class="radio-inline"><input type="radio" class="sex" name="sex" value="m"><%=text.male%></label>
+					<label class="radio-inline"><input type="radio" class="sex" name="sex" value="f"><%=text.female%></label>
+				</span>
+			</div>
+		</div>
+	</div>
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title input-40"><span><%=text.growth%>:</span></span>
+				<span class="input-values ">
+					<input class="data-input growth" type="text" value="" name="growth" maxlength="3" > <%=text.sm%>
+				</span>
+			</div>
+		</div>
+	</div>
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title input-40"><span><%=text.weight%>:</span></span>
+				<span class="input-values ">
+					<input class="data-input weight" type="text" value="" name="weight" maxlength="3" > <%=text.kg%>
+				</span>
+			</div>
+		</div>
+	</div>
+	<!--						<div class="row">
+								<div class="col-md-6">
+									<span class="input-title input-auto"><span>Рост:</span></span>
+									<span class="input-values">
+										<input class="data-input growth" type="text" value="" name="growth" maxlength="5" > см
+									</span>
+								</div>
+								<div class="col-md-6">
+									<span class="input-title input-auto" style="margin-left: 20px"><span>Вес:</span></span>
+									<span class="input-values">
+										<input class="data-input weight" type="text" value="" name="weight" maxlength="5" > кг
+									</span>
+								</div>
+							</div>-->
+	<div class="streak">
+		<div class="row ">							 
+			<div class="col-md-12">
+				<span class="input-title input-title-100"><span><%=text.main_disease%>:</span>
+					<div class="search-holder disease-holder disease-holder-disease">
+						<input class="data-input data-input-100 search disease" type="text" value="" name="disease[]" data-search-cat="mkb"><div class="search-result disease-result"></div>
+						<div class="pull-right"><button type="submit" class="btn btn-xs btn-primary disease-add">Добавить поле</button></div>
+					</div>
+			</div>
+		</div>
+	</div>
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title input-title-100"><span><%=text.concomitant_diseases%>:</span>
+					<div class="search-holder disease-holder disease-holder-disease2">
+						<input class="data-input data-input-100 search disease" type="text" value="" name="disease2[]" data-search-cat="mkb"><div class="search-result disease-result"></div>
+						<div class="pull-right"><button type="submit" class="btn btn-xs btn-primary disease-add"><%=text.add_input%></button></div>
+					</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title"><span><%=text.presence_pregnancy%>:</span></span>
+				<span class="input-values">
+					<div class="checkbox">
+						<input type="checkbox" value="1" name="pregnancy">
+					</div>
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="streak">
+		<div class="row">	 
+			<div class="col-md-12">
+				<span class="input-title"><span><%=text.gestational_age%>:</span></span>
+				<span class="input-values">
+					<!--<input class="data-input gestation" type="text" value="" name="gestation" maxlength="5">&nbsp;<span class="gestation-week">неделя</span>-->
+					<select class="data-select data-input gestation-select" name="gestation">
+						<option value='' selected="selected"></option>
+						<option value='1'>1</option>
+						<option value='2'>2</option>
+						<option value='3'>3</option>
+						<option value='4'>4</option>
+						<option value='5'>5</option>
+						<option value='6'>6</option>
+						<option value='7'>7</option>
+						<option value='8'>8</option>
+						<option value='9'>9</option>
+						<option value='10'>10</option>
+						<option value='11'>11</option>
+						<option value='12'>12</option>
+						<option value='13'>13</option>
+						<option value='14'>14</option>
+						<option value='15'>15</option>
+						<option value='16'>16</option>
+						<option value='17'>17</option>
+						<option value='18'>18</option>
+						<option value='19'>19</option>
+						<option value='20'>20</option>
+						<option value='21'>21</option>
+						<option value='22'>22</option>
+						<option value='23'>23</option>
+						<option value='24'>24</option>
+						<option value='25'>25</option>
+						<option value='26'>26</option>
+						<option value='27'>27</option>
+						<option value='28'>28</option>
+						<option value='29'>29</option>
+						<option value='30'>30</option>
+						<option value='31'>31</option>
+						<option value='32'>32</option>
+						<option value='33'>33</option>
+						<option value='34'>34</option>
+						<option value='35'>35</option>
+						<option value='36'>36</option>
+						<option value='37'>37</option>
+						<option value='38'>38</option>
+						<option value='39'>39</option>
+						<option value='40'>40</option>
+						<option value='41'>41</option>
+						<option value='42'>42</option>
+						<option value='43'>43</option>
+						<option value='44'>44</option>
+					</select>
+				</span>
+
+			</div>
+		</div>
+
+
+		<div class="row row-or">
+			<div class="col-md-12">
+				<span class="input-title">&nbsp;&nbsp;&nbsp;&nbsp;<%=text.or%></span>
+				<span class="input-values"></span>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-12">
+				<span class="input-title"><span><%=text.trimester%></span></span>
+				<span class="input-values">
+					<select class="data-select trimester-select" name="trimester">
+						<option value=''></option>
+						<option value='1'><%=text.first%></option>
+						<option value='2'><%=text.second%></option>
+						<option value='3'><%=text.third%></option>
+					</select>
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="row ">
+		<div class="col-md-12">
+			<span class="input-title"><span><%=text.lactation%>:</span></span>
+			<span class="input-values">
+				<div class="checkbox">
+					<input type="checkbox" value="1" name="lactation">
+				</div>
+			</span>
+		</div>
+	</div>
+
+	<div class="streak">
+		<div class="row ">
+			<div class="col-md-12">
+				<span class="input-title"><span><%=text.driving%>:</span></span>
+				<span class="input-values">
+					<div class="checkbox">
+						<input type="checkbox" value="1" name="driving">
+					</div>
+				</span>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<div class="bottom buttons bottom-user">
+	<span class="left-holder"><input type="submit" value="<%=text.clear%>" data-state="clear_user" class="btn btn-default"></span>
+	<span class="right-holder"><input type="submit" value="<%=text.ok%>" data-state="back_from_user" class="btn btn-primary"></span>
+</div>

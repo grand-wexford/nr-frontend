@@ -1,0 +1,65 @@
+<div class="doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.dosage%>:</span></div>
+		<div class="col-xs-5"><input type="text" name="doz" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select" autocomplete="off"></select></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.dosage_count%>:</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_count" value="1" class="doz-count doz-input-notfull" maxlength="3"> <span class="small-gray"><%=text.sht%></span></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.single_dose%>:</span></div>
+		<!--<div class="col-xs-5"><input type="text" name="doz_raz" value="" class="doz-input-notfull" disabled="disabled"><select disabled="disabled" class="doz-select" name="doz-select-raz" autocomplete="off"></select></div>-->
+		<div class="col-xs-5"><span class="small-gray" name="doz_raz"></span> <span class="small-gray" name="doz-select-raz"></span></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.per_body_weight%> (<input type="text" class="doz-weight-input" placeholder="<%=text.weight%>" name="weight" maxlength="6"><span class="small"><%=text.kg%></span>)</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_m" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-m" autocomplete="off"></select></div>
+	</div>
+</div>
+
+<% if( data.group !== false ) { %>
+<div class="doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.input_speed%>:</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_speed" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-speed" autocomplete="off"></select></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.per_body_weight%> (<input type="text" class="doz-weight-input" placeholder="<%=text.weight%>" name="weight" maxlength="6"><span class="small"><%=text.kg%></span>)</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_speedm" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-speedm" autocomplete="off"></select></div>
+	</div>
+</div>
+<%}%>
+
+<div class="doz-info-doz frequency-holder">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.dosing_frequency%>:</span></div>
+		<div class="col-xs-5"><select name="frequency" class="frequency dosage-list" autocomplete="off"></select></div>
+	</div>
+</div>
+
+<div class="doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.daily_dose%>:</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_s" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-s" autocomplete="off"></select></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.per_body_weight%> (<input type="text" class="doz-weight-input" placeholder="<%=text.weight%>" name="weight" maxlength="6"><span class="small"><%=text.kg%></span>)</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_sm" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-sm" autocomplete="off"></select></div>
+	</div>
+</div>
+
+<% if( data.group === false ) { %>
+<div class="doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.dosing_duration%>:</span></div>
+		<div class="col-xs-5"><select name="duration" class="duration dosage-list pull-right" autocomplete="off"></select></div>
+	</div>
+</div>
+
+<div class="clear"></div>
+<div class="doz-info-special">
+	<span class="doz-info-title"><%=text.special_instructions%></span>
+	<textarea name="doz-special" class="doz-special"></textarea>
+</div>
+<%}%>

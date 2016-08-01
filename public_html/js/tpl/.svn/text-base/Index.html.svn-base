@@ -1,0 +1,84 @@
+		<div class="sf-conteiner">
+			<div class="loading"><span class="glyphicon glyphicon-repeat rotate color-white" aria-hidden="true" title="<%=text.loading%>"></span></div>
+
+			<div class="PX-interaction"></div>
+			<div class="app-cover"></div>
+			<div class="menu-cover"></div>
+			<div class="menu-holder"></div>
+			<div class="page"></div>
+
+			<div class="flip-container" id="flip-toggle">						
+				<div class="flipper">
+					<div class="front">
+						<div class="help-button link">
+							<button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span> <%=text.help%></button>
+						</div>
+						<div class="menu-button link">
+							<span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span>
+						</div>
+						<div class="user-button link H-user_info">
+							<button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-user" aria-hidden="true"></span> <span class="user-button-text"><%=text.personal_data%></span></button>
+						</div>
+
+						<div class="content">
+							<div class="search-holder"><input type="text" value="" name="search" class="search" data-search-cat="preparation" placeholder="<%=text.enter_drug_name%>" autocomplete="off"><div class="search-result"></div></div>
+							<div class="text-area"><textarea name="" class="area" placeholder="<%=text.enter_drug_list%>"></textarea></div>
+							<div class='text-view'>
+								<div class="text-view-list-holder">
+									<div class="text-view-container">
+										<div class="text-view-list"></div>
+										<div class="text-view-group-control">
+											<button type="button" class="btn btn-success btn-xs text-view-delete-group"><%=text.disband%></button>
+											<button type="button" class="btn btn-success btn-xs text-view-save-group" disabled="disabled"><%=text.save%> (<%=text.selected%>: <span>0</span>)</button>
+											<button type="button" class="btn btn-primary btn-xs text-view-create-group"><%=text.create_injection%></button>
+										</div>
+										<div class="text-view-help alert-warning"><%=text.highlight_two_drugs_for_injection%></div>
+										<span class="text-view-indication"></span>
+									</div>
+								</div>
+								<div class="text-view-bottom"></div>
+							</div>
+						</div>
+						<div class="bottom buttons">
+							<span class="left-holder"><input type="submit" class="btn btn-default"></span>
+							<span class="right-holder"><input type="submit" class="btn btn-primary" id="set"></span>
+						</div>
+					</div>
+
+					<div class="back">
+						<div class="evidences">&nbsp;</div>
+						<div class="back-header-holder">
+							<div class="evi-title">&nbsp;</div>
+							<div class="back-header">&nbsp;</div>
+						</div>
+						<div class="back-content">
+							<div class="back-interaction">
+								<div class="direction"></div>
+								<div class="interaction-el el1">
+									<span class="preparat-name">&nbsp;</span>
+								</div>
+								<div class="interaction-middle hidden"></div>
+								<div class="interaction-el el2">
+									<span class="preparat-name">&nbsp;</span>
+								</div>
+								<div class="interaction-etc"></div>
+							</div>
+							<!--Вынести в шаблон -->
+							<div class="back-text"></div>
+							<div class="back-form-title"><%=text.assess_interaction%>:</div>
+							<div class="back-form">
+								<div class="radio"><label><input type="radio" name="userOpinionInteractionValue" id="optionsRadios1" value="<%=text.combination_contraindicated%>"><%=text.combination_contraindicated%></label></div>
+								<div class="radio"><label><input type="radio" name="userOpinionInteractionValue" id="optionsRadios2" value="<%=text.use_with_care%>"><%=text.use_with_care%></label></div>
+								<div class="radio"><label><input type="radio" name="userOpinionInteractionValue" id="optionsRadios3" value="<%=text.weak_interaction%>"><%=text.weak_interaction%></label></div>
+								<div class="radio"><label><input type="radio" name="userOpinionInteractionValue" id="optionsRadios3" value="<%=text.no_interactions%>"><%=text.no_interactions%></label></div>
+								<textarea class="userOpinionInteractionText"></textarea>
+							</div>
+						</div>
+						<div class="back-bottom buttons">
+							<span class="left-holder"><input type="submit" class="btn btn-default"></span>
+							<span class="right-holder"><input type="submit" class="btn btn-primary H-edit"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>

@@ -1,0 +1,820 @@
+/* global Backbone, _ */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	
+	/**
+	 * Дозировки
+	 * @module Dosage
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 * 
+	 * @todo Избавиться от tmp_dosage (или нет)
+	 */
+	
+	var Dosage = Backbone.View.extend( {
+		el: 'body',
+		//all_units: {},
+
+		initialize: function(){
+			this.all_units = [];
+			Dispatcher.on( 'Dosage:saveDosage', this.saveDosage, this );
+		},
+		
+		events: {
+			"click .doz": "getDosage",
+			"click .doz-item .text": "onClickDozItem",
+			"keyup [name=doz]": "onEditD",
+			"keyup [name=doz_m]": "onEditDM",
+			"keyup [name=doz_count]": "onEditCount",
+			"keyup [name=doz_s]": "onEditS",
+			"keyup [name=doz_sm]": "onEditSM",
+			"keyup [name=weight]": "onEditWeight",
+			"change [name=doz-select]": "syncSelect",
+			"change [name=doz-select-m]": "syncSelect",
+			//"change [name=doz-select-raz]": "syncSelect",
+			"change [name=doz-select-s]": "syncSelect",
+			"change [name=doz-select-sm]": "syncSelect",
+			"change [name=doz-select-speed]": "syncSelect",
+			"change [name=doz-select-speedm]": "syncSelect",
+			"change [name=frequency]": "onChangeFrequency"
+		},
+
+		getDosage: function ( event ) {
+			var  groupId = $( event.currentTarget ).data( 'groupId' ),
+				data;
+
+			this.elIndex = Core.getIndex( event );
+			this.elName = GL.get( ['names', this.elIndex, 'name'] );
+
+			data = {medicament: this.elName, tn: GL.getTN( this.elIndex ) };
+			
+			if ( typeof groupId !== 'undefined' ) {
+				GL.set( 'fromGroup', groupId );
+				data['injection'] = GL.get('fromGroup');
+			}
+			
+			Core.request( {
+				url: 'getDosage',
+				data: data,
+				callback: this.onSuccessGetDoz,
+				self: this
+			} );
+		},
+		
+		clearDoz: function () {
+			$( '[name=doz], [name=doz_m], [name=doz_s], [name=doz_sm], [name=doz_speed], [name=doz_speedm], [name=doz-select], [name=doz-select-m], [name=doz-select-s], [name=doz-select-m], [name=doz-select-speed], [name=doz-select-speedm], [name=frequency], [name=duration]' ).val( '' );
+			$( '[name=doz-select-raz], [name=doz_raz]' ).text( '' );
+		},
+
+		// Частота
+		onChangeFrequency: function () {
+			this.calcAll();
+		},
+		
+		// Вес
+		onEditWeight: function ( event ) {
+			$( '[name=weight]' ).val ( $( event.currentTarget ).val() ); // дублируем во второе аналогичное поле
+			this.calcAll( event );
+		},
+
+		// Доза
+		onEditD: function ( event ) {
+			this.calcAll( event );
+		},
+		
+		// Кол-во доз
+		onEditCount: function ( event ) {
+			this.calcAll( event );
+		},
+		
+		// На массу тела
+		onEditDM: function ( event ) {
+			Core.correctDigitInput( event );
+			this.calcD( 'm' );
+			this.calcS();
+			this.calcSM();
+			this.activityControl();
+		},
+		
+		// Суточная доза
+		onEditS: function ( event ) {
+			Core.correctDigitInput( event );
+			this.calcD( 's' );
+			this.calcDM();
+			this.calcSM();
+			this.activityControl();
+		},
+		
+		// Суточная доза на массу тела
+		onEditSM: function ( event ) {
+			Core.correctDigitInput( event );
+			this.calcD( 'sm' );
+			this.calcDM();
+			this.calcS();
+			this.activityControl();
+		},
+		// Все поля на основе дозировки
+		calcAll: function ( event ) {
+			if ( event ) {
+				Core.correctDigitInput( event );
+			}
+			this.calcDR();
+			this.calcDM();
+			this.calcS();
+			this.calcSM();
+			this.activityControl();
+		},
+		
+		// Дозаировка на основе поля from
+		calcD: function ( from ) {
+			from = from || 'm';
+
+			var  val = '',
+				weight = $( '[name=weight]' ).val(),
+				day = $( '[name=frequency]' ).find( ':selected' ).data( 'day' );
+			
+			if ( from === 'm' ) {
+				var doz_m = $( '[name=doz_m]' ).val();
+
+				if ( doz_m !== '' && weight > 0 ) {
+					val = Core.roundNum( doz_m * weight, 3 );
+				}
+				
+			} else if ( from === 's' ) {
+				var doz_s = $( '[name=doz_s]' ).val();
+
+				if ( doz_s !== '' && day !== '' ) {
+					val = Core.roundNum( doz_s * day, 3 );
+				}
+				
+			} else if ( from === 'sm' ) {
+				var doz_sm = $( '[name=doz_sm]' ).val();
+
+				if ( doz_sm !== '' && weight > 0 && day !== '' ) {
+					val = Core.roundNum( ( doz_sm * weight ) / day, 3 );
+				}
+			}
+			
+			$( '[name=doz]' ).val( val );
+		},
+
+		// Разовая доза
+		calcDR: function () {
+			var
+					doz = $( '[name=doz]' ).val(),
+					doz_count = $( '[name=doz_count]' ).val(),
+					val = '';
+
+			if ( doz !== '' && doz_count !== '' && doz_count > 0 ) {
+				val = Core.roundNum( doz_count * Core.correctDigit( doz ), 3 );
+			} else {
+				val = doz;
+			}
+
+			$( '[name=doz_raz]' ).text( val );
+		},
+	
+		// Доза на масс тела
+		calcDM: function () {
+			var  doz_raz = $( '[name=doz_raz]' ).text(),
+				weight = $( '[name=weight]' ).val(),
+				val = '';
+
+			if ( weight > 0 && doz_raz !== '' ) {
+				val = Core.roundNum( doz_raz / weight, 3 );
+			}
+			$( '[name=doz_m]' ).val( val );
+		},
+		
+		// Суточная доза на масс тела
+		calcSM: function () {
+			var  day = $( '[name=frequency]' ).find( ':selected' ).data( 'day' ),
+				doz_m = $( '[name=doz_m]' ).val(),
+				val = '';
+
+			if ( day > 0 && doz_m !== '' ) {
+				val = Core.roundNum( doz_m * day, 3 );
+			}
+			$( '[name=doz_sm]' ).val( val );
+		},
+		// Суточная доза
+		calcS: function () {
+			var  day = $( '[name=frequency]' ).find( ':selected' ).data( 'day' ),
+				doz_raz = $( '[name=doz_raz]' ).text(),
+				val = '';
+
+			if ( day > 0 && doz_raz !== '' ) {
+				val = Core.roundNum( doz_raz * day, 3 );
+			}
+			$( '[name=doz_s]' ).val( val );
+		},
+		
+		syncSelect: function ( event ) {
+			var
+					val,
+					doz_raz;
+			
+			if ( event ) {
+				val = $( event.currentTarget ).val();
+			} else {
+				val = $( '[name=doz-select]' ).val();
+			}
+			doz_raz = $( '[name=doz_raz]' ).text();
+
+			$( '[name=doz-select]' ).val( val );
+			$( '[name=doz-select-m]:not(:disabled)' ).val( val );
+			$( '[name=doz-select-s]:not(:disabled)' ).val( val );
+			$( '[name=doz-select-sm]:not(:disabled)' ).val( val );
+			$( '[name=doz-select-speed]:not(:disabled)' ).val( val );
+			$( '[name=doz-select-speedm]:not(:disabled)' ).val( val );
+
+			if ( val && val !== '' && doz_raz && doz_raz !== '' && this.getUnitName( val ) !== '' ) {
+				$( '[name=doz-select-raz]' ).text( this.getUnitName( val ) );
+			}
+		},
+		
+		getUnitName : function ( key ) {
+			//console.log(key);
+			//console.log(this.all_units);
+			var self = this;
+			var name = '';
+			$.each( this.all_units, function ( k, v ) {
+				if ( v.id == key ) {
+					name = v.name;
+					return false;
+				}
+			} );
+			
+			return name;
+		},
+		activityControl : function () {
+			var els = 
+			{
+				'd': { 'el': $( '[name=doz]' ), 'disabled': false },
+				'm': { 'el': $( '[name=doz_m]' ), 'disabled': false },
+				's': { 'el': $( '[name=doz_s]' ), 'disabled': false },
+				'sm': { 'el': $( '[name=doz_sm]' ), 'disabled': false }
+			};
+
+			
+			if ( $( '[name=weight]' ).val() === '' ) {
+				els.m.disabled = true;
+				els.sm.disabled = true;
+			}
+			
+			if ( !$( '[name=frequency]' ).find( ':selected' ).data( 'day' )  || $( '[name=frequency]' ).find( ':selected' ).data( 'day' ) === '' ) {
+				els.s.disabled = true;
+				els.sm.disabled = true;
+			}
+
+			$.each( els, function ( k, v ) {
+				v.el.prop( 'disabled', v.disabled );
+				v.el.next( 'select' ).prop( 'disabled', v.disabled );
+				if ( v.disabled === true ) {
+					v.el.attr( 'value', '' );
+					v.el.next( 'select' ).attr( 'value', '' );
+				}
+			} );
+
+			this.syncSelect();
+		},
+		
+		setUnitList: function( form_id, parent ) {
+			if ( form_id ) {
+				form_id = !parent || parent === 0 ? form_id : parent;
+			} else {
+				form_id = '0';
+			}
+			
+			var  $dozSelect = $( '.page' ).find( '[name=doz-select]' ),
+				$dozSelectM = $( '.page' ).find( '[name=doz-select-m]' ),
+				$dozSelectS = $( '.page' ).find( '[name=doz-select-s]' ),
+				$dozSelectSM = $( '.page' ).find( '[name=doz-select-sm]' );
+				//$dozSelectRD = $( '.page' ).find( '[name=doz-select-raz]' );
+			
+			if ( $dozSelect.data( 'form_id' ) === form_id ) {
+				if ( Core.objectLength( this.all_units ) === 0 ) {
+					this.setUnitList();
+				}
+				return false;
+			}
+
+			var
+					selected_id = $dozSelect.find( ':selected' ).val(),
+					dosage_all = GL.get( 'dosage_all' ),
+					unit_list = [],
+					currentUnit = GL.get( ['names', this.elIndex, 'dosage', 'unit'] ),
+					hasCurrent = false;
+			
+			//console.log(GL.get( ['names', this.elIndex, 'dosage'] ));
+
+			$dozSelect.html( '' ).data( 'form_id', form_id ).append( $( '<option>' ).val( '' ) );
+			$dozSelectM.html( '' ).append( $( '<option>' ).val( '' ) );
+			$dozSelectS.html( '' ).append( $( '<option>' ).val( '' ) );
+			$dozSelectSM.html( '' ).append( $( '<option>' ).val( '' ) );
+
+			if ( Core.objectLength( this.all_units ) === 0 ) {
+				$.each( dosage_all.form, function ( k, v ) {
+					$.each( v.unit_list, function ( k2, v2 ) {
+						unit_list.push( v2 );
+					} );
+				} );
+				this.all_units = unit_list;
+			}
+
+			if ( form_id === '0' ) {
+				unit_list = this.all_units;
+			} else {
+				$.each( dosage_all.form, function ( k, v ) {
+					if ( v.id == form_id ) {
+						unit_list = v.unit_list;
+						return false;
+					}
+				} );
+			}
+			
+			// Чтобы узнать есть ли там текущая Еи.
+			//console.log( currentUnit);
+			if ( currentUnit ) {
+				$.each( unit_list, function ( k2, v2 ) {
+					if ( hasCurrent === false && v2.name && ( currentUnit.trim() === v2.name.trim() ) ) {
+						hasCurrent = true;
+						return false;
+					}
+				} );
+//console.log(hasCurrent);
+				if ( hasCurrent === false ) {
+					unit_list.push( {'id': 'current', 'name': currentUnit, 'type': 'new'} );
+					selected_id = 'current';
+					//this.all_units.push( {'id': 'current', 'name': currentUnit, 'type': 'new'} );
+				}
+			}
+//console.log(unit_list);
+
+			if( unit_list ) {
+				$.each( unit_list, function ( key, val ) {
+					selected = selected_id == val.id;
+
+					$dozSelect.append( $( '<option>' ).html( val.name ).val( val.id ).data( 'unitType', val.type ).prop( 'selected', selected ) );
+					$dozSelectM.append( $( '<option>' ).html( val.name+'/кг' ).val( val.id ).data( 'unitType', val.type ).prop( 'selected', selected ) );
+					$dozSelectS.append( $( '<option>' ).html( val.name ).val( val.id ).data( 'unitType', val.type ).prop( 'selected', selected ) );
+					$dozSelectSM.append( $( '<option>' ).html( val.name+'/кг' ).val( val.id ).data( 'unitType', val.type ).prop( 'selected', selected ) );
+				});
+			}
+		},
+
+		onClickDozItem: function ( event ) {
+			var  $el = $( event.currentTarget ),
+				$li = $el.closest( 'li' ),
+				$li_inner = $li.find( '.li-inner:first' ),
+				id = $li.data( 'id' ),
+				type = $li.data( 'type' ),
+				dosage,
+				$li_parent = $li.closest( 'ul' ).closest( 'li' ),
+				value = $li.data( 'value' ),
+				unit = $li.data( 'unit' ),
+				parent = $li.data( 'parent' ),
+				name = $li.data( 'name' ),
+				parent_name = $li.data( 'parent_name' ),
+				input_value = Core.getValueFromCombined( $li.data( 'input-value' ) ),
+				input_unit_id = $li.data( 'input-unit-id' ),
+				depth = $li.parents( 'li' ).length;
+
+			if ( type === 'form' ) {
+				this.setUnitList( id, parent );
+			} 
+//			else {
+//				this.setUnitList();
+//			}
+
+			if ( $li.hasClass( 'list-block' ) || $li_parent.hasClass( 'list-block' ) ) {
+				$( '.page' ).find( '.li-selected' ).removeClass( 'li-selected' );
+				$( '.page' ).find( '.list-block' ).removeClass( 'list-block' );
+				// Удаляем ЛФ и СП. Одно из них дальше назначится, а второе не нужно, т.к. не подходит.
+				GL.set( ['names', this.elIndex, 'tmp_dosage', 'method'], {} );
+				GL.set( ['names', this.elIndex, 'tmp_dosage', 'form'], {} );
+			}
+
+			if ( depth === 0 ) {
+				return false;
+			} 
+			
+			if ( $li_inner.hasClass( 'li-selected' ) ) {
+				if ( depth === 1 ) {
+					$li_parent.find( '.li-selected' ).removeClass( 'li-selected' );
+					//this.hideDosing();
+					//this.setUnitList();
+					GL.set( ['names', this.elIndex, 'tmp_dosage', type], {} );
+				} else if ( depth === 2 ) {
+					$li_parent.find( '.li-selected' ).removeClass( 'li-selected' );
+					$li_parent.find( '.text:first' ).trigger( 'click' );
+				}
+
+				this.dosageRelation( type, true );
+				return true;
+			}
+				
+			$el.closest( '.doz-category' ).find( '.li-selected' ).removeClass( 'li-selected' );
+
+			if ( $li_parent.parents( 'li' ).length > 0 ) {
+				$li_parent.find( '.li-inner:first' ).addClass( 'li-selected' );
+			}
+			
+			$li_inner.addClass( 'li-selected' );
+
+			if ( parent !== "0" ) {
+				dosage = {
+					'value': value,
+					'unit': unit
+				};
+			}
+
+			var dosageInfo = {
+				'type': type,
+				'id': id,
+				//'uniq_id': uniq_parent + "-" + id + "-" + value,
+				'name': name,
+				'parent_name': parent_name,
+				'parent': parent,
+				'dosage': dosage,
+				'input_value': input_value,
+				'input_unit_id': input_unit_id
+			};
+
+			event.preventDefault();
+			this.setTmpDosage( type, dosageInfo );
+
+			// исключаем дополнительные
+			if ( $li.data( 'parent' ) !== "other" ) {
+				this.dosageRelation( type, false );
+			}
+			if ( depth > 0 ) {
+				this.setDoz( dosageInfo );
+			}
+
+			return true;
+		},
+		
+		setDoz: function ( dosageInfo ) {
+			this.hideDosing( false );
+
+			if ( dosageInfo['input_value'] && dosageInfo['input_unit_id'] ) {
+				$( '[name=doz]' ).val( dosageInfo['input_value'] );
+				$( '[name=doz-select]' ).val( dosageInfo['input_unit_id'] );
+				$( '[name=doz]' ).trigger( 'keyup' );
+			}
+		},
+		
+		hideDosing: function ( state ) {
+			state = state === false ? false : true;
+			var dosage;
+			
+			if ( state === false ) {
+				$( '.doz-info-doz:not(.not-show)' ).slideDown( 'fast' );
+			} else if ( state === true ) {
+				dosage = GL.get( ['names', this.elIndex, 'dosage'] ) || {};
+
+				if ( Core.objectLength( dosage ) === 0 ) {
+					$( '.doz-info-doz' ).slideUp( 'fast' );
+					this.clearDoz();
+				}
+			}
+		},
+		
+		autoSelector: function () {
+			var $methodList = $( '.doz-category[data-id=method]' );
+
+			// Устанавливаем Способ применения, если доступен только один вариант и установлена Лекарственная форма.
+			if ( ( GL.get( ['names', this.elIndex, 'dosage', 'form', 'id'] ) && !GL.get( ['names', this.elIndex, 'dosage', 'method', 'id'] ) ) || ( GL.get( ['names', this.elIndex, 'tmp_dosage', 'form', 'id'] ) && !GL.get( ['names', this.elIndex, 'tmp_dosage', 'method', 'id'] ) )  ) {
+				if ( $methodList.find( '.doz-item:not(.list-block)' ).length === 1 ) {
+					$methodList.find( '.expand.glyphicon-plus:first' ).trigger( 'click' );
+					$methodList.find( '.doz-item:not(.list-block)' ).find( '.text' ).trigger( 'click' );
+				}
+			}
+		},
+		
+		dosageRelation: function ( type, reset ) {
+			var
+					tmpDosage = GL.get( ['names', this.elIndex, 'tmp_dosage'] ),
+					D = tmpDosage['method'],
+					F = tmpDosage['form'],
+					types = {
+						'form': {
+							'vs': 'method',
+							'el_id': ''
+						},
+						'method': {
+							'vs': 'form',
+							'el_id': ''
+						}
+					};
+
+			if ( D ) {
+				types.method.el_id = D['id'];
+			}
+
+			if ( F ) {
+				types.form.el_id = !F['parent'] || F['parent'] == 0 ? F['id'] : F['parent'];
+			}
+
+			if ( reset === true ) {
+				$( '.doz-item[data-type=' + types[type]['vs'] + '][data-parent=0]' ).removeClass( 'list-block' );
+				return true;
+			}
+
+			$( '.doz-item[data-type=' + types[type]['vs'] + '][data-parent=0]' ).addClass( 'list-block' );
+			$.each( GL.get( ['dosage_all', types[type]['vs']] ), function ( k, v ) {
+				$.each( v[type], function ( k2, v2 ) {
+					if ( types[type]['el_id'] == v2 ) {
+						$( '.page' ).find( '[data-id="' + v.id + '"][data-type="' + types[type]['vs'] + '"]' ).removeClass( 'list-block' );
+					}
+				} );
+			} );
+
+			// исключаем дополнительные
+			$( '.page' ).find( '[data-id="other"]' ).removeClass( 'list-block' );
+			$( '.page' ).find( '[data-parent="other"]' ).removeClass( 'list-block' );
+			this.autoSelector();
+			return true;
+		},
+		
+		saveDosage: function () {
+			var
+				tmpDosage = GL.get( ['names', this.elIndex, 'tmp_dosage'] ),
+				value = $( '[name=doz]' ).val(),
+				count = $( '[name=doz_count]' ).val(),
+				$doz_select = $( '[name=doz-select]' ).find( ':selected' ),
+				special = $( '.doz-special' ).val(),
+				frequency = $( '.frequency' ).find( ':selected' ).val() !== '' ? $( '.frequency' ).find( ':selected' ).text() : '',
+				duration = $( '.duration' ).find( ':selected' ).val() !== '' ? $( '.duration' ).find( ':selected' ).text() : '';
+
+			if ( !tmpDosage && value === '' && special === '' ) {
+				GL.del( ['names', this.elIndex, 'tmp_dosage'] );
+				GL.del( ['names', this.elIndex, 'dosage'] );
+				return;
+			}
+
+			if ( !tmpDosage ) {
+				GL.set( ['names', this.elIndex, 'dosage'], {'form': {}, 'method': {}, 'special': ''} );
+			} else {
+				GL.set( ['names', this.elIndex, 'dosage'], tmpDosage );
+			}
+
+			GL.set( ['names', this.elIndex, 'dosage', 'value'], value );
+			GL.set( ['names', this.elIndex, 'dosage', 'count'], count );
+			GL.set( ['names', this.elIndex, 'dosage', 'unit'], $doz_select.text() );
+			GL.set( ['names', this.elIndex, 'dosage', 'unit_id'], $doz_select.val() );
+			GL.set( ['names', this.elIndex, 'dosage', 'unit_type'], $doz_select.data( 'unitType' ) );
+			GL.set( ['names', this.elIndex, 'dosage', 'frequency'], frequency );
+			GL.set( ['names', this.elIndex, 'dosage', 'duration'], duration );
+			GL.set( ['names', this.elIndex, 'dosage', 'special'], special );
+
+			if ( $( '.doz-weight-input' ).val() !== '' ) {
+				GL.set( ['user_info', 'weight'], $( '.doz-weight-input' ).val() );
+				Dispatcher.trigger( 'User:setActive' );
+			}
+		},
+		
+		setTmpDosage: function ( type, dosage ) {
+			if ( !GL.get( ['names', this.elIndex, 'tmp_dosage'] ) ) {
+				GL.set( ['names', this.elIndex, 'tmp_dosage'], {'form': {}, 'method': {}} );
+			}
+			GL.set( ['names', this.elIndex, 'tmp_dosage', type], dosage );
+		},
+		
+		onSuccessGetDoz: function ( data, event, self ) {
+			var  i = 0,
+				Dkey = self.elIndex,
+				dosage = GL.get( ['names', Dkey, 'dosage'] ) || {},
+				user_info = GL.get( 'user_info' ),
+				selected_item = '',
+				selected_item_d = '',
+				list = [ { id: 'form', name: 'Лекарственные формы', elements: data.form } ],
+				$ul = $( '<ul>' ).addClass( "sort list-group" ),
+				$resultHolder = $( '<div>' ).addClass( "result-holder" ),
+				$li,
+				$div,
+				$divText,
+				$plus,
+				$dozInfo = _.template( Core.tpls.dozInfo )( { data: { group: GL.get( 'fromGroup' ) } } ),
+				$select,
+				$select_d,
+				$name;
+
+			if ( GL.get( 'fromGroup' ) === false ) {
+				list.push( { id: 'method', name: 'Способы применения', elements: data.method } );
+			}
+
+			GL.set( 'dosage_all', data );
+
+			// Цикл проходит два раза и строит Лекарственные формы и Способы применения
+			$.each( list, function ( index, value ) {
+				$name = $( '<span>' ).html( value.name );
+				$div = $( '<div>' ).addClass( "li-inner" );
+				$plus = $( '<div class="expand-icon"><span class="glyphicon glyphicon-plus expand link"></span></div>' );
+				$divText = $( '<div>' ).addClass( "text" ).append( $name ).data( 'name', value.name );
+				$div.append( $divText );
+				$li = $( '<li>' ).append( $div ).after( "\n" ).addClass( "list-group-item list-group-item-padding doz-category" ).data( 'id', value.id ).attr( 'data-id', value.id );
+
+				if ( GL.get( ['names', Dkey, 'dosage', value.id, 'id'] ) ) {
+					$div.addClass( 'marked' );
+				}
+				
+				if ( value.elements && value.elements.length > 0 ) {
+					i++;
+					$div.prepend( $plus );
+					$li.append( self.dozItems( value.elements, value.id, '0', '', 1 ) ).data( 'id', value.id );
+					$ul.append( $li );
+				}
+			} );
+
+			$resultHolder.append( $ul ).append( $dozInfo );
+			Core.loadTpl( 'secondPage', { title: 'Дозировка и способ применения', titleClass: 'doz-color', subTitle: self.elName, result: $resultHolder.html() } );
+			
+			$( '.page' ).find( '.marked' ).find( '.expand' ).trigger( 'click' );
+
+			$select = $( '.page' ).find( '.frequency' );
+			$select_d = $( '.page' ).find( '.duration' );
+			
+			if ( user_info['weight'] && user_info['weight'] !== '' ) {
+				$( '.doz-weight-input' ).val( user_info['weight'] );
+			}
+			
+			selected_item = ( dosage['frequency'] && dosage['frequency']['id'] ) || selected_item;
+			selected_item_d = ( dosage['duration'] && dosage['duration']['id'] ) || selected_item_d;
+				
+			if ( GL.get( ['dosage_all', 'frequency'] ) ) {
+				$select.append( $( '<option>' ).text( '' ).val( '' ) );
+
+				$.each( GL.get( ['dosage_all', 'frequency'] ), function ( k, v ) {
+					$select.append( $( '<option>' ).text( v.name ).val( v.id ).data( 'day', v.day ).prop( { selected: v.id == selected_item } ) );
+				} );
+			}
+
+			if ( GL.get( ['dosage_all', 'duration'] ) ) {
+				$select_d.append( $( '<option>' ).text( '' ).val( '' ) );
+
+				$.each( GL.get( ['dosage_all', 'duration'] ), function ( k, v ) {
+					$select_d.append( $( '<option>' ).text( v.name ).val( v.id ).prop( 'selected', v.id == selected_item_d ) );
+				} );
+			}
+
+			if ( dosage['form'] && dosage['form']['id'] && dosage['form']['parent'] !== 'other' ) {
+				self.dosageRelation( 'form', false );
+				self.setUnitList( dosage['form']['id'], dosage['form']['parent'] );
+			} else {
+				self.setUnitList();
+			}
+
+			if ( dosage['method'] && dosage['method']['id'] && dosage['form'] && dosage['form']['parent'] !== 'other' ) {
+				self.dosageRelation( 'method', false );
+			}
+			
+			if ( Core.objectLength( dosage ) > 0 ) {
+				$( '.page' ).find( '[name=doz]' ).val( Core.getValueFromCombined( dosage['value'] ) );
+				$( '.page' ).find( '.doz-special' ).val( dosage['special'] || '' );
+				$( '.page' ).find( '.doz-count' ).val( Core.correctDigit( dosage['count'] ) > 0 ? dosage['count'] : '1' );
+
+				if ( dosage['unit_id'] ) {
+					$( '.page' ).find( '.doz-select' ).find( '[value="' + dosage['unit_id'] + '"]').prop( { 'selected': true } );
+				} else if ( dosage['unit'] ) {
+					//console.log(self.all_units);
+					$.each( self.all_units, function ( index, value ) {
+						if ( value.name === dosage['unit'] ) {
+							$( '.page' ).find( '.doz-select' ).find( '[value="' + value.id + '"]').prop( { 'selected': true } );
+							return false;
+						}
+					});
+					$( '.page' ).find( '.doz-select' ).find( '[text="' + dosage['unit'] + '"]').prop( { 'selected': true } );
+				}
+
+				self.hideDosing( false );
+			}
+			
+			if ( $( '.weight' ).length && $( '.weight' ).val() !== '' ) {
+				$( '.doz-weight-input' ).val( $( '.weight' ).val() );
+			} else {
+				$( '[name=doz_m]' ).prop( 'disabled', true );
+				$( '[name=doz-select-m]' ).prop( 'disabled', true );
+			}
+
+			if ( selected_item === '' ) {
+				$( '[name=doz_s]' ).prop( 'disabled', true );
+				$( '[name=doz-select-s]' ).prop( 'disabled', true );
+				$( '[name=doz_sm]' ).prop( 'disabled', true );
+				$( '[name=doz-select-sm]' ).prop( 'disabled', true );
+			} else {
+				if ( !$( '.weight' ).length || $( '.weight' ).val() === '' ) {
+					$( '[name=doz_sm]' ).prop( 'disabled', true );
+					$( '[name=doz-select-sm]' ).prop( 'disabled', true );
+				}
+			}
+
+			
+			Dispatcher.trigger( 'App:toggleListView', 'doz' );
+			self.calcAll();
+		},
+		
+		dozItems: function ( elements, type, parent, parent_name ) {
+			var  self = this,
+				i,
+				$ul = $( '<ul>' ).addClass( "sort list-tree list-hover list-group medicaments-list" ),
+				$li,
+				$div,
+				$plus,
+				uniq_parent,
+				//uniq_id,
+				$empty,
+				$divText,
+				$li_parent,
+				Dkey = this.elIndex,
+				dosage,
+				$name;
+
+			$.each( elements, function ( index, value ) {
+				i++;
+				$name = $( '<span>' ).html( value.name );
+				$div = $( '<div>' ).addClass( "li-inner" );
+				$plus = $( '<div class="expand-icon"><span class="glyphicon glyphicon-plus expand link"></span></div>' );
+				$empty = $( '<div class="expand-icon"><span class="glyphicon glyphicon-holder"></span></div>' );
+				$divText = $( '<div>' ).addClass( "text" ).append( $name ).data( 'name', value.name );
+				$div.append( $divText );
+				uniq_parent = parent == 0 ? value.id : parent;
+				//uniq_id = uniq_parent + "-" + value.id + "-" + value.values; // доработать. в данный момент нет гарантии что полученный id будет уникальным. Реальные id всех элементов в списке извесны, можно ориентироваться по ним.
+				//uniq_id = value.id;
+
+				var id = value.id ? value.id : parent; // хз зачем это но так не работает(не выделяет уже выбранное), возможно сломалось при каких-то спцифичиских условиях
+				// это надо брать из глобальных, а для этого нужны уникальные id
+				$li = $( '<li>' ).append( $div ).after( "\n" ).addClass( "doz-item list-group-item list-group-item-padding" )
+						.data( 'type', type ).attr( 'data-type', type )
+//						.data( 'id', id ).attr( 'data-id', id )
+						.data( 'name', self.getName( value['name'], value['short'], 2 ) ).attr( 'data-name', self.getName( value['name'], value['short'], 2 ) )
+						.data( 'parent_name', parent_name ).attr( 'data-parent_name', parent_name )
+						.data( 'value', value.values ).attr( 'data-value', value.values )
+						.data( 'unit', value.unit || undefined ).attr( 'data-unit', value.unit || undefined )
+						.data( 'uniq_parent', uniq_parent ).attr( 'data-uniq_parent', uniq_parent )
+						.data( 'parent', parent ).attr( 'data-parent', parent )
+						//.data( 'uniq_id', uniq_id ).attr( 'data-uniq_id', uniq_id )
+						.data( 'id', value.id ).attr( 'data-id', value.id );
+
+				if ( value['values_input'] && Core.objectLength( value['values_input'] ) > 0 ) {
+					$li.data( 'input_value', value['values_input']['value'] ).attr( 'data-input-value', value['values_input']['value'] );
+					$li.data( 'input_unit', value['values_input']['unit'] ).attr( 'data-input-unit', value['values_input']['unit'] );
+					$li.data( 'input_unit_id', value['values_input']['unit_id'] ).attr( 'data-input-unit-id', value['values_input']['unit_id'] );
+				}
+				
+				if ( value.dosage && value.dosage.length > 0 ) {
+					$div.prepend( $plus );
+					$li.append( self.dozItems( value.dosage, type, value.id, value['short'] ) );
+				} else {
+					$div.prepend( $empty );
+				}
+
+				$ul.append( $li );
+				dosage = GL.get( ['names', Dkey, 'dosage'] );
+				if ( dosage && 
+						( 
+							( dosage['form'] && value.id == dosage['form']['id'] ) || 
+							( dosage['method'] && value.id == dosage['method']['id'] ) 
+						) ) {
+					$li.find( '.li-inner:first' ).addClass( 'marked' );
+				}
+			} );
+
+			$li_parent = $ul.find( '.marked' ).closest( 'ul' ).closest( 'li' );
+			$ul.find( '.marked' ).addClass( 'li-selected' );
+			$li_parent.find( '.li-inner:first' ).addClass( 'li-selected marked' );
+
+			if ( i == 0 )
+				return '';
+
+			return $ul;
+		},
+		
+		getName: function ( name, short_name, type ) {
+			type = type || 1;
+			var out;
+
+			if ( type == 1 ) {
+				if ( name == short_name || !short_name ) {
+					out = name;
+				} else {
+					out = name + " (" + short_name + ")";
+				}
+			} else if ( type == 2 ) {
+				out = short_name || name;
+			}
+
+			return out;
+		}
+
+
+	} );
+	return Dosage;
+} );

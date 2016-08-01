@@ -1,0 +1,4 @@
+<%=text.drug1%>: <%=data.el1%>
+<%=text.drug2%>: <%=data.el2%>
+<%=text.user_interaction_opinion%>: <%=data.value%>
+<%=text.user_comment%>: <%=data.comment%>

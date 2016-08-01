@@ -1,0 +1,383 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	/**
+	 * Модуль для работы с инфузионными растворами
+	 * @module Group
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+	
+	var Group = Backbone.View.extend( {
+		el: 'body',
+		_$el: {
+			page: $( '.page' )
+		},
+		
+		_currentGroup: false,
+		_transform: false,
+		
+		initialize: function(){
+			Dispatcher.off( 'Group:recount', this.recount );
+			Dispatcher.off( 'Group:render', this.render );
+			
+			Dispatcher.on( 'Group:recount', this.recount, this );
+			Dispatcher.on( 'Group:render', this.render, this );
+		},
+		
+		events: {
+			"click .text-view-create-group": "_transformView",
+			"click .li-inner-group-item": "_onClickGroupItem",
+			"click .edit-group-icon": "_onClickEditGroupItem",
+			"click .text-view-delete-group": "_onClickDeleteGroup",
+			"click .text-view-save-group:not(:disabled)": "_onClickSaveGroup"
+		},
+
+		_onClickDeleteGroup: function ( ) {
+			this._deleteGroup( this._currentGroup );
+			this.recount();
+			Dispatcher.trigger( 'App:getInfoPreparation' );
+		},
+		
+		_onClickEditGroupItem: function ( event ) {
+			var group_id = $( event.currentTarget ).data( 'groupId' );
+			this._transform = true;
+			this._currentGroup = parseInt( group_id );
+			this._transformView();
+			this._setCheckboxes();
+			this._printCountChecked();
+		},
+		
+		_setCheckboxes: function () {
+			var  $items = $( '.text-view-list' ).find( '.li-inner' ),
+				self = this;
+
+			$items.each( function ( k, v ) {
+				if ( typeof $( v ).data( 'groupId' ) === 'undefined' || $( v ).data( 'groupId' ) === '' || $( v ).data( 'groupId' ) == self._currentGroup ) {
+					$( v ).find( ':checkbox' ).prop( { 'disabled': false } );
+				} else {
+					$( v ).find( ':checkbox' ).prop( { 'disabled': true } );
+				}
+			} );
+		},
+		
+		_setCreateButtonStatus: function () {
+			var c = 0;
+			
+			$.each( GL.get( 'elements' ), function( k, v ) {
+				if ( v.injection === true ) {
+					c++;
+				}
+			});
+
+			if ( c < 2 ) {
+				$( '.text-view-create-group' ).hide();
+			} else {
+				$( '.text-view-create-group' ).show();
+
+				if ( c - this.groupsElementsCounter < 2 ) {
+					$( '.text-view-create-group' ).prop( 'disabled', true );
+				} else {
+					$( '.text-view-create-group' ).prop( 'disabled', false );
+				}
+			}
+		},
+		
+		_deleteGroup: function ( group_id ) {
+			var names = GL.get( 'names' );
+			
+			$.each( names, function( k, v ) {
+				if ( typeof v.group !== 'undefined' && v.group == group_id ) {
+					GL.del( ['names', k, 'group'] );
+				}
+			});
+		},
+		
+		// удаляет группы, в которых осталось меньше двух элементов
+		_cleanGroups: function () {
+			var 	g = this._getGroups(),
+				self = this;
+
+			$.each( g, function( k, v ) {
+				if( v.length< 2 ) {
+					self._deleteGroup( k );
+				}
+			});
+		},
+		
+		
+		_getGroups: function () {
+			var  names = GL.get( 'names' ),
+				g = {};
+
+			$.each( names, function( k, v ) {
+				if ( typeof v.group !== 'undefined' ) {
+					if ( typeof g[v.group] === 'undefined' ) {
+						g[v.group] = [];
+					}
+					g[v.group].push( k );
+				}
+			});
+			return g;
+		},
+		
+		getGroup: function ( group_id ) {
+			var groups = this._getGroups();
+			return groups[group_id];
+		},
+		
+		_getGroupCoordinates: function ( group_id ) {
+			var  names = GL.get( 'names' ),
+				coor = {},
+				coor_arr = [];
+			
+			$.each( names, function( k, v ) {
+				if ( v.group === group_id ) {
+					coor_arr.push( k );
+				}
+			});
+			coor.start = coor_arr[0];
+			coor.end = coor_arr[ coor_arr.length - 1];
+
+			return coor;
+		},
+		
+		recount: function () {
+			this._cleanGroups();
+			this._fixPositions();
+		},
+		
+		render: function () {
+			this._transform = false;
+			
+			this._transformView();
+			// Это можно включить, если не рассчитывать на сортировку групп на сервере. В добавок к этому надо раскомментить строки из app.onSuccessRequestByKey
+			//this._fixPositions();
+			this.markGroups();
+		},
+
+		markGroups: function () {
+			var  names = GL.get( 'names' ),
+				colorCounter=0,
+				groupsElementsCounter = 0, // заодно считаем все элементы в группе
+				first,
+				last,
+				$icon,
+				coor,
+				self = this,
+				g = this._getGroups(),
+				curGroup = false;
+
+			$( '.li-inner' ).attr( 'class', 'li-inner' ).data( 'groupId', '' );
+			$( '.doz-group-icon' ).remove();
+			$( '.edit-group-icon' ).remove();
+			$( '.li-inner' ).find( '.change' ).show();
+			$( '.li-inner' ).find( '.doz' ).show();
+
+
+			$.each( names, function( k, v ) {
+				if ( typeof v.group !== 'undefined' ) {
+					groupsElementsCounter++;
+					$( '.text-view-list' ).find( '.li-inner:eq('+k+')').addClass( 'in-group-item group-' + v.group ).data( 'groupId', v.group );
+
+					// сменилась группа
+					if ( curGroup !== v.group ) {
+						curGroup = v.group;
+						colorCounter++;
+						colorCounter = colorCounter > 5 ? 0 : colorCounter;
+
+						coor = self._getGroupCoordinates( v.group );
+						first = coor.start; // так же === k
+						last = coor.end;
+						
+						// если это не первая группа, то удаляем нижнюю границу предыдущей группы
+						if ( first > 1 ) {
+							$( '.text-view-list' ).find( '.li-inner:eq('+(first-1)+')' ).removeClass( 'group-border-bottom' );
+						}
+						
+						$( '.text-view-list' ).find( '.li-inner:eq('+first+')' ).removeClass( 'group-border-bottom' ).addClass( 'group-border-top' );
+						$( '.text-view-list' ).find( '.li-inner:eq('+last+')' ).removeClass( 'group-border-top' ).addClass( 'group-border-bottom' );
+					}
+				}
+			});
+
+			$( '.in-group-item' ).find( '.change' ).remove();
+			$( '.in-group-item' ).find( '.doz' ).remove();
+
+			$.each( g, function ( k, v ) {
+				//$iconHolder = $( '<span>' ).addClass( 'warning-icon-holder status link color-danger warning-el H-warning_' + k ).data( 'id', v.id ).attr( {'data-id': v.id, title: v.name} );
+				$icon = $( '<img>' ).attr( {'src': 'img/infusion.svg', 'width': '46px', 'height': '46px'} ).addClass( 'doz-group-icon link' ).data( 'groupId', k );
+				
+				$( '.group-' + k + ':first' ).find( '.control-icons' ).prepend( $icon );
+				//$( '.group-' + k + ':first' ).find( '.control-icons' ).prepend( '<span title="Дозировка и способ применения" class="fa fa-flask color-lightgray doz-group-icon link" data-group-id="' + k + '"></span>' );
+				$( '.group-' + k + ':first' ).find( '.control-icons' ).prepend( '<span title="'+Core.getText( 'change_injection' )+'" class="glyphicon glyphicon-pencil color-lightgray edit-group-icon link" data-group-id="' + k + '"></span>' );
+			} );
+
+			this.groupsElementsCounter = groupsElementsCounter;
+			this._setCreateButtonStatus();
+		},
+
+		_exchange: function ( k1, k2  ) {
+			if ( k1 === k2 ) {
+				return;
+			}
+
+			var  names = GL.get( 'names' ),
+				tmp = names[k1];
+			
+			names[k1] = names[k2];
+			names[k2] = tmp;
+		},
+
+		_getNewGroupId: function () {
+			var groups_arr = [];
+
+			$.each( GL.get( 'names' ), function ( k, v ) {
+				if ( typeof v.group !== 'undefined' ) {
+					groups_arr.push( v.group );
+				}
+			});
+			
+			if ( groups_arr.length > 0 ) {
+				return Math.max.apply( 0, groups_arr )+1;
+			} else {
+				return 0;
+			}
+		},
+
+		_editGroup: function ( checked ) {
+			var self = this;
+
+			$.each( GL.get( 'names' ), function ( k, v ) {
+				if ( Core.in_array( k, checked ) ) {
+					GL.set( ['names', k, 'group'], self._currentGroup );
+				} else {
+					if ( v['group'] == self._currentGroup ) {
+						GL.del( ['names', k, 'group'] );
+					}
+				}
+			});
+		},
+
+		_addGroup: function ( checked ) {
+			var group_id = this._getNewGroupId();
+
+			$.each( checked, function ( k, v ) {
+				GL.set( ['names', v, 'group' ], group_id );
+			});
+		},
+
+		_fixGroup: function ( group_id, start ) {
+			var  	group = this.getGroup( group_id ), // важно получить группу после каждого прохода
+				i = 0,
+				self = this;
+
+				$.each( group, function ( k, v ) {
+					self._exchange( v, i+start );
+					i++;
+				});
+		} ,
+		
+		// Сдвигает группы вместе
+		_fixPositions: function () {
+			var  	groups = this._getGroups(),
+				start = 0,
+				self = this;
+
+			$.each( groups, function ( k, v ) {
+				self._fixGroup( k, start );
+				start = start+v.length;
+			});
+		},
+
+		_onClickSaveGroup: function () {
+			var  $items = $( '.li-inner-group-item' ),
+				checked = [];
+
+			$items.each( function ( k ) {
+				if ( $( this ).find( '.group-checkbox:not(:disabled)' ).is( ':checked' ) ) {
+					checked.push( k );
+				}
+			} );
+			
+			if ( this._currentGroup !== false ) {
+				this._editGroup( checked );
+			} else {
+				this._addGroup( checked );
+			}
+			this.recount();
+			Dispatcher.trigger( 'App:getInfoPreparation' );
+		},
+
+		_onClickGroupItem: function ( event ) {
+			if ( !$( event.target ).hasClass( 'group-checkbox' ) ) {
+				$( event.currentTarget ).find( '.group-checkbox' ).trigger( 'click' );
+			}
+			
+			this._printCountChecked();
+		},
+
+		_printCountChecked: function( len ) {
+			len = len || $( '.text-view-list' ).find( ':checked:not(:disabled)' ).length;
+			$( '.text-view-save-group' ).find( 'span' ).text( len );
+			if ( len > 1 ) {
+				$( '.text-view-save-group' ).prop( 'disabled', false );
+			} else {
+				$( '.text-view-save-group' ).prop( 'disabled', true );
+			}
+		},
+		
+		_transformView: function () {
+			Dispatcher.trigger( 'App:clearConnectors' );
+			if ( this._transform === false ) {
+				this._transform = true;
+				$( '.search' ).prop( 'disabled', false );
+				$( '.text-view-help, .text-view-delete-group, .text-view-save-group' ).hide();
+				$( '.group-checkbox, .group-checkbox-placer' ).remove();
+				$( '.status, .li-icon, .similar, .control-icons, .text-view-indication' ).show();
+				$( '.text-holder' ).addClass( 'real-item' );
+				$( '.li-inner-group-item' ).removeClass( 'li-inner-group-item' );
+				$( '.text-view-create-group' ).html( Core.getText( 'create_injection' ) );
+				
+				this._printCountChecked( 0 );
+				this._currentGroup = false;
+			} else {
+				this._transform = false;
+				$( '.search' ).prop( 'disabled', true );
+				$( '.status, .li-icon, .similar, .control-icons, .text-view-indication' ).hide();
+				$( '.text-view-help, .text-view-save-group' ).show();
+				$( '.text-holder' ).removeClass( 'real-item' );
+				$( '.text-view-container' ).find( '.li-inner' ).addClass( 'li-inner-group-item' );
+				$( '.text-view-create-group' ).html( Core.getText( 'cancel' ) ).prop( { 'disabled': false } );
+				
+				if ( this._currentGroup !== false ) {
+					$( '.text-view-delete-group' ).show();
+				}
+
+				var $gsi = $( '<input>' ).attr( { 'class': 'group-checkbox', 'type': 'checkbox' } );
+				var $items = $( '.text-view-list' ).find( '.li-inner' );
+				var $gsi_holder;
+				$items.each( function ( k, v ) {
+					$gsi_holder = $( '<span>' ).attr( { 'class': 'group-checkbox-placer' } );
+					if ( GL.get( ['elements', k, 'injection'] ) ) {
+						$gsi = $( '<input>' ).attr( { 'class': 'group-checkbox', 'type': 'checkbox' } );
+						
+						if ( $( v ).hasClass( 'in-group-item' ) ) {
+							$gsi.prop( { 'checked': true, 'disabled': true } );
+						}
+						$( '.text-view-container' ).find( '.text:eq('+k+')' ).prepend( $gsi );
+					} else {
+						$( '.text-view-container' ).find( '.text:eq('+k+')' ).prepend( $gsi_holder );
+					}
+				} );
+			}
+		}
+	} );
+	return Group;
+} );

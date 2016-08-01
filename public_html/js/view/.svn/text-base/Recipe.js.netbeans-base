@@ -1,0 +1,204 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+
+	/**
+	 * Выписка рецепта
+	 * @module Recipe
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+
+	var Recipe = Backbone.View.extend( {
+		el: 'body',
+		_$el: {
+			page: $( '.page' )
+		},
+		/**
+		 * Отображать в рецепте МНН вместо торговых названий.
+		 */
+		mnn: false,
+		/**
+		 * События.
+		 */
+		events: {
+			"click .to-mnn": "onClickToMnn",
+			"click .print": "onClickPrint",
+			"keyup .recipe-list textarea": "onKeyupTextarea"
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'Recipe:show', this.getRecipe, this );
+			Dispatcher.on( 'Recipe:send', this.sendRecipe, this );
+		},
+
+		
+		onKeyupTextarea: function ( event ) {
+			this.textareaResize( $( event.currentTarget ) );
+		},
+		
+		textareaResize: function ( $el ) {
+			count = $el.val().split( /[\n\r]/ ).length;
+			$el.height( count * 22 + 'px' );
+		},
+		textareaResizeAll: function ( ) {
+			var self = this;
+			$( '.recipe-list' ).find( 'textarea' ).each( function ( ) {
+				self.textareaResize( $( this ) );
+			} );
+		},
+		/**
+		 * При нажатии на кнопку "Печать".
+		 * @listens "click .print"
+		 */
+
+		onClickPrint: function ( ) {
+			this.textareaResizeAll();
+			window.print();
+		},
+		/**
+		 * Отправить рецепт на почту.
+		 */
+		sendRecipe: function () {
+			var
+					inputs = $( '.recipe-list' ).find( 'textarea' ),
+					medicaments_array = [],
+					message = '',
+					email = $( '.email' ).val();
+
+			$.each( inputs, function ( k, v ) {
+				medicaments_array.push( $( v ).val() );
+			} );
+
+			if ( $( '.recipe-patient-fio' ).val() !== '' ) {
+				message = message + 'ФИО пациента: ' + $( '.recipe-patient-fio' ).val() + "\n";
+			}
+
+			if ( $( '.recipe-age' ).val() !== '' ) {
+				message = message + 'Возраст пациента: ' + $( '.recipe-age' ).val() + "\n";
+			}
+
+			if ( $( '.recipe-doctor-fio' ).val() !== '' ) {
+				message = message + 'ФИО врача: ' + $( '.recipe-doctor-fio' ).val() + "\n";
+			}
+
+			if ( $( '.recipe-lpu' ).val() !== '' ) {
+				message = message + 'Название ЛПУ: ' + $( '.recipe-lpu' ).val() + "\n\n";
+			}
+
+			if ( medicaments_array.length > 0 ) {
+				message = message + medicaments_array.join( "\n" ) + "\n\n";
+			}
+
+			if ( $( '.recipe-date' ).val() !== '' ) {
+				message = message + 'Дата: ' + $( '.recipe-date' ).html();
+			}
+
+			Core.request( {
+				url: 'sendRecipe',
+				data: {email: email, text: message, medicaments: GL.get( 'names' )},
+				callback: this.onSuccessSendRecipe
+			} );
+		},
+		/**
+		 * При успешном ответе сервера на sendRecipe.
+		 */
+		onSuccessSendRecipe: function () {
+			Dispatcher.trigger( 'Alert:show', {
+				title: 'Лист назначения отправлен'
+			} );
+		},
+		/**
+		 * При клике на кнопку "Заменить на МНН"
+		 * @param {object} event
+		 * @listens "click .to-mnn"
+		 */
+		onClickToMnn: function ( event ) {
+			var self = this;
+			this.mnn = !this.mnn;
+
+			$.each( GL.get( 'names' ), function ( k, v ) {
+				$( '.recipe-list' ).find( 'textarea:eq(' + k + ')' ).val( self.formatRecipeRow( k ) );
+			} );
+			this.setMnnButton();
+		},
+		/**
+		 * Устанавливает текст кнопке "Заменить на МНН"
+		 */
+		setMnnButton: function () {
+			$( '.to-mnn' ).text( this.mnn ? 'Вернуть как было' : 'Заменить на действующие вещества' );
+		},
+		/**
+		 * Возвращает сформированную строку заболевания.
+		 * @param {String} k Ключ препарата (порядковый номер).
+		 * @returns {String}
+		 */
+		formatRecipeRow: function ( k ) {
+			var
+					input_text = '',
+					dozText = "",
+					name = "";
+
+			if ( GL.get( ['names', k] ) ) {
+				name = this.mnn ? GL.get( ['elements', k, 'mnn'] ) : GL.get( ['names', k, 'name'] );
+				input_text = ( k + 1 ) + '. ' + name;
+				if ( GL.get( ['names', k, 'dosage'] ) ) {
+					dozText = " " + Core.formatDoz( k, 1 ) + "\n" + Core.formatDoz( k, 2 );
+					input_text = input_text + dozText;
+				}
+			}
+
+			return input_text;
+		},
+		/**
+		 * Формирует и отображает страницу с рецептом.
+		 */
+		getRecipe: function () {
+			var
+					data = {},
+					$div = $( '<div>' ),
+					length = Math.max( Core.objectLength( GL.get( 'names' ) ), 8 ),
+					$input,
+					def;
+
+			for ( var i = 0; i < length; i++ ) {
+				if ( $div.find( 'textarea:eq(' + i + ')' ).length ) {
+					$input = $div.find( 'textarea:eq(' + i + ')' );
+				} else {
+					$input = $( '<textarea>' );
+					$div.append( $input );
+				}
+
+				$input.text( this.formatRecipeRow( i ) );
+			}
+
+			def = $div.find( 'textarea' ).length - length;
+
+			if ( def > 0 ) {
+				for ( var i2 = 0; i2 < def; i2++ ) {
+					$div.find( 'textarea:eq(-1)' ).remove();
+				}
+			}
+
+			data.date = new Date().toLocaleDateString();
+			data.age = GL.get( ['user_info', 'age_normal'] );
+
+			Core.loadTpl( 'recipe', {title: 'Лист назначения', data: data, result: $div.html()}, 'recipe-holder' );
+			this.setMnnButton();
+
+			this._$el.page.find( '.recipe-list-holder' ).outerHeight( this._$el.page.outerHeight() - 80 );
+			this._$el.page.find( '.recipe-list' ).outerHeight( this._$el.page.outerHeight() - 80 - 115 );
+			
+			this.textareaResizeAll();
+		}
+	} );
+	return Recipe;
+} );

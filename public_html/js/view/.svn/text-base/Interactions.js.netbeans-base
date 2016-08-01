@@ -1,0 +1,582 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL',
+	'text!js/tpl/ReportInteraction.html'
+], function ( Dispatcher, Core, GL, tplReportInteraction ) {
+
+	/**
+	 * Взаимодействия препаратов.
+	 * @module Interactions
+	 * @todo Плохо описано. Лучше переработать, модуль давно не изменялся.
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 * @requires tplReportInteraction
+	 */
+
+	var Interactions = Backbone.View.extend( {
+		el: 'body',
+		_$el: {
+			page: $( '.page' ),
+			backText: $( '.back-text' ),
+			backInteraction: $( '.back-interaction' ),
+			backContent: $( '.back-content' ),
+			interactionEtc: $( '.interaction-etc' )
+		},
+		 /** События */
+		events: {
+//    "click .literature-dop": "onClickExpandDesc", // потом вернуть
+			"click .desc-key": "onClickExpandDesc",
+			"click .symbol-icon-active": "onClickArrowCenter",
+			"click .evi-item, .interaction, .interaction-category": "onClickInteraction"
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'Interaction:report', this.report, this );
+			Dispatcher.on( 'Interactions:resizer', this.resizer, this );
+
+			$( '[name=userOpinionInteractionValue]:checked' ).attr( 'checked', false );
+			$( '.userOpinionInteractionText' ).val( '' );
+		},
+		/**
+		 * При раскрытии описания взаимодействия.
+		 * @param {object} event
+		 * @listens "click .desc-key"
+		 */
+		onClickExpandDesc: function ( event ) {
+			$( event.currentTarget ).next().toggle( 'fast' );
+			$( event.currentTarget ).toggleClass( 'desc-key-active' );
+		},
+		/**
+		 * Подготавливает массив с уровнями доказательности.
+		 * @param {string} id1 Идентификатор первого элемента.
+		 * @param {string} id2 Идентификатор второго элемента.
+		 * @param {string} category Категория взаимодействия.
+		 * @returns {array}
+		 */
+		prepareEvidence: function ( id1, id2, category ) {
+			var
+					conflicts = [],
+					currentArray = id1 > 100 ? 'warnings' : 'elements',
+					tmpConflicts = GL.get( [currentArray, id1, 'conflict'] ) || [];
+
+			$.each( tmpConflicts, function ( index, value ) {
+				if ( category ) {
+					if ( value.id == id2 && value.category === category ) {
+						conflicts.push( value );
+					}
+				} else {
+					if ( value.id == id2 ) {
+						conflicts.push( value );
+					}
+				}
+			} );
+//			return this.testSort( conflicts );
+			return conflicts;
+		},
+		/**
+		 * 
+		 * @param {string} id1 Идентификатор первого элемента.
+		 * @param {array} categories_uniq Уникальные категории взаимодействий.
+		 * @param {string} category_selected Выбранная категория.
+		 */
+		renderDirectionEtc: function ( id1, categories_uniq, category_selected ) {
+			var self = this;
+			$.each( categories_uniq, function ( index, value ) {
+				if ( category_selected != value.category ) {
+					self._$el.interactionEtc
+							.append( $( '<span>' )
+									.addClass( 'interaction-category' )
+									.text( value.category )
+									.data( {'el1': id1, 'el2': value.id, 'category': value.category} ) );
+				}
+			} );
+		},
+		/**
+		 * При клике на иконку взаимодействия.
+		 * @param {object} event
+		 * @listens "click .evi-item, .interaction, .interaction-category"
+		 */
+		onClickInteraction: function ( event ) {
+			var
+					self = this,
+					id1 = $( event.currentTarget ).data( 'el1' ),
+					id2 = $( event.currentTarget ).data( 'el2' ),
+					category = $( event.currentTarget ).data( 'category' ),
+					category_conflicts,
+					conflict_selected,
+					maxEviIndex,
+					conflicts = this.prepareEvidence( id1, id2 );
+
+			if ( $( event.currentTarget ).hasClass( 'evi-item' ) ) {
+				maxEviIndex = $( '.evi-holder .evi-item' ).index( $( event.currentTarget ) );
+			} else {
+				maxEviIndex = 0; //this.getMaxEvidenceIndex( conflicts, category );
+			}
+
+			if ( category ) {
+				category_conflicts = this.prepareEvidence( id1, id2, category );
+				conflict_selected = category_conflicts[maxEviIndex] || [];
+			} else {
+				conflict_selected = conflicts[maxEviIndex] || [];
+			}
+
+			var
+					method1,
+					method2,
+					conflict_element1,
+					conflict_element2,
+					array_name1 = id1 > 100 ? 'warnings' : 'elements',
+					array_name2 = id2 > 100 ? 'warnings' : 'elements',
+					arrItems1 = GL.get( [array_name1, id1] ) ||[],
+					arrItems2 = GL.get( [array_name2, id2] ) || [],
+					preparatName1 = '', // arrItems1['name'],
+					preparatName2 = '', // arrItems2['name'],
+					status,
+					$literature_block = $( '.literature-block' ),
+					currentArray = conflict_selected['id'] > 100 ? 'warnings' : 'elements',
+					mnn1 = '',
+					mnn2 = '',
+					ties = GL.get( ['descriptions', conflict_selected['idTies'] ] ) || {},
+					categories_uniq,
+					$literature_link,
+					$literature_header,
+					category_selected;
+
+			if ( conflict_selected['direction'] === 'a' ) {
+				method1 = ties.method_a;
+				method2 = ties.method_b;
+
+				conflict_element1 = ties.conflict_element_a;
+				conflict_element2 = ties.conflict_element_b;
+			} else {
+				method1 = ties.method_b;
+				method2 = ties.method_a;
+
+				conflict_element1 = ties.conflict_element_b;
+				conflict_element2 = ties.conflict_element_a;
+			}
+
+			if ( arrItems1['mnn'] && arrItems1['send'].toUpperCase() !== arrItems1['mnn'].toUpperCase() ) {
+				mnn1 = ' (' + arrItems1['mnn'] + ')';
+			}
+
+			if ( arrItems2['mnn'] && arrItems2['send'].toUpperCase() !== arrItems2['mnn'].toUpperCase() ) {
+				mnn2 = ' (' + arrItems2['mnn'] + ')';
+			}
+
+			preparatName1 = conflict_element1;
+			preparatName2 = conflict_element2;
+
+			if ( method1 ) {
+				preparatName1 += ' <span class="no-bold small">' + method1 + '</span>';
+			}
+
+			preparatName1 += ' <span class="small-mnn">' + arrItems1['send'] + mnn1 + '</span>';
+
+			if ( method2 ) {
+				preparatName2 += ' <span class="no-bold small">' + method2 + '</span>';
+			}
+
+			preparatName2 += ' <span class="small-mnn">' + arrItems2['send'] + mnn2 + '</span>';
+
+			this._$el.backText.html( '' );
+			if ( ties.descriptions ) {
+				$.each( ties.descriptions, function ( index, value ) {
+					if ( index !== "recommendations" ) {
+						self._$el.backText.append( value );
+					}
+				} );
+
+				if ( ties.descriptions.recommendations && ties.descriptions.recommendations !== "" ) {
+					self._$el.backText.append( "<p><b>"+Core.getText( 'recommendations' )+":</b><br>" + ties.descriptions.recommendations + "</p>" );
+				}
+			}
+
+			if ( $literature_block.length ) {
+				$literature_block.html( '' );
+			} else {
+				$literature_block = $( '<div>' ).addClass( 'literature-block' );
+			}
+
+			if ( ties.literature ) {
+				$.each( ties.literature, function ( index, value ) {
+					var $lit = $( '<span>' );
+
+					if ( value.links && value.links.length > 0 ) {
+						$literature_link = $( '<a>' ).attr( {'href': value.links[0], 'target': '_blank', 'rel': 'external'} ).html( value.text );
+						$literature_link.append( '&nbsp;' ).append( $( '<span class="glyphicon glyphicon-new-window" aria-hidden="true"></span>' ) );
+						$lit.append( $literature_link );
+
+						if ( value.links.length > 1 ) {
+							$lit.append( ' (' );
+							$.each( value.links, function ( index2, value2 ) {
+								if ( index2 > 0 ) {
+									$literature_link = $( '<a>' ).attr( {'href': value2, 'target': '_blank', 'rel': 'external'} ).html( Core.getText( 'additional_link' ) );
+									$lit.append( $literature_link );
+								}
+							} );
+							$lit.append( ')' );
+						}
+					} else {
+						$lit.html( value.text );
+					}
+
+					var $li = $( '<li>' );
+					$li.append( $lit );
+
+					$literature_block.append( $li );
+				} );
+			}
+
+// ============================================
+// Дополнительные описания элемента
+
+			var ids = [id1, id2],
+					desc_keys,
+					$desc_title,
+					$desc_value,
+					$li;
+
+			$.each( ids, function ( index, id ) {
+				if ( id < 100 && GL.get( ['elements', id, 'descriptions_keys', conflict_selected['idTies']] ) ) {
+					desc_keys = GL.get( ['elements', id, 'descriptions_keys', conflict_selected['idTies']] );
+
+					$.each( desc_keys, function ( index, value ) {
+						$desc_title = $( "<a>" ).addClass( "link desc-key literature-dop" ).html( GL.get( ['titles', 'descriptions', value] ) + ' (' + GL.get( ['elements', id, 'name'] ) + ')' );
+						$desc_value = $( "<div>" ).addClass( "desc-value" ).html( GL.get( ['elements', id, 'descriptions', value] ) );
+						$li = $( '<li>' );
+
+						// Это нужно. Временно отключено.
+						//if ( desc_keys.length == 1 && $backText.html() == '' ) 
+						//	$desc_value.show();
+
+						$desc_title.append( '&nbsp;' ).append( $( '<span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span>' ) );
+
+						$li.append( $desc_title ).append( $desc_value );
+						$literature_block.append( $li );
+					} );
+				}
+			} );
+
+			if ( $literature_block.html() !== "" ) {
+				$literature_header = $( '<div>' ).addClass( 'literature-head' ).text( Core.getText( 'sources_of_information' ) );
+				$literature_block.prepend( $literature_header );
+				this._$el.backText.append( $literature_block );
+			}
+
+// ============================================
+// Дополнительные стрелки противопоказаний
+
+			this._$el.interactionEtc.text( '' );
+			if ( !category ) {
+				category_selected = conflict_selected['category'];
+
+				if ( category_selected ) {
+					category_conflicts = this.getCategoryConflicts( category_selected, conflicts );
+					categories_uniq = this.getCategoryUniq( conflicts );
+					preparatName2 = category_selected;
+					this.renderDirectionEtc( id1, categories_uniq, category_selected );
+				} else {
+					category_conflicts = conflicts;
+				}
+			} else {
+				preparatName2 = category;
+				categories_uniq = this.getCategoryUniq( conflicts );
+				this.renderDirectionEtc( id1, categories_uniq, category );
+			}
+
+// ============================================
+
+			status = Core.getStatus( conflict_selected['value'] );
+
+			$( '.el1' ).find( '.preparat-name' ).html( preparatName1 );
+			$( '.el2' ).find( '.preparat-name' ).html( preparatName2 );
+
+			$( '.back-header' ).html( GL.get( ['titles', currentArray, conflict_selected['value'] ] ) ).removeClass().addClass( 'back-header bg-color-' + status.color );
+			$( '.evi-title' ).html( GL.get( ['titles', 'trust', conflict_selected['trust'] ] ) ).removeClass().addClass( 'evi-title bg-color-' + status.color );
+			$( '.interaction-color' ).html( conflict_selected['direction'] );
+
+			if ( !$( '.interaction-middle' ).hasClass( 'hidden' ) ) {
+				$( '.interaction-middle' ).addClass( 'hidden' );
+				$( '.el1' ).css( {marginBottom: '30px'} );
+				$( '.el2' ).css( {marginTop: '30px'} );
+			}
+
+			if ( ties.listLS ) {
+				var $ul = $( '<ul>' ).addClass( 'list-group interaction-middle-list' );
+				var $li;
+
+				$.each( ties.listLS, function ( index, value ) {
+					$li = $( '<li>' ).addClass( 'list-group-item list-group-item-padding' ).html( value );
+					$ul.append( $li );
+				} );
+				$( '.interaction-middle' ).html( $ul );
+			}
+
+			Dispatcher.trigger( 'App:toggleListView', 'interaction' );
+			this.renderEvidences( category_conflicts, maxEviIndex, id1, id2 );
+			this.renderDirection( conflict_selected['value'], ties.directionArrow, conflict_selected['direction'], ties.directionSymbol );
+
+			Dispatcher.trigger( 'Helper:FH' );
+		},
+		/**
+		 * Получение уникальных категорий взаимодействий.
+		 * @param {array} conflicts Конфликты. (или object?)
+		 * @returns {object} Уникальные конфликты.
+		 */
+		getCategoryUniq: function ( conflicts ) {
+			var out_array = {};
+			$.each( conflicts, function ( key, value ) {
+				out_array[value.category] = value;
+			} );
+
+			return out_array;
+		},
+		/**
+		 * Получение конфликтов категории.
+		 * @param {string} category Категория.
+		 * @param {array} conflicts Конфликты (или object?).
+		 * @returns {Array}
+		 */
+		getCategoryConflicts: function ( category, conflicts ) {
+			var out_array = [];
+			$.each( conflicts, function ( key, value ) {
+				if ( category == value.category ) {
+					out_array.push( value );
+				}
+			} );
+
+			return out_array;
+		},
+		/**
+		 * Отрисовка уровней доказательности.
+		 * @param {array} conflicts Конфликты (или object?).
+		 * @param {string} maxEviIndex Максимальный уровень доказательности.
+		 * @param {string} id1 Идентификатор первого элемента.
+		 * @param {string} id2 Идентификатор второго  элемента.
+		 */
+		renderEvidences: function ( conflicts, maxEviIndex, id1, id2 ) {
+			var eviArray = [],
+					$span = $( '<span>' ).addClass( 'evi-holder' ),
+					$item,
+					width = Math.floor( 100 / conflicts.length );
+
+			if ( conflicts ) {
+				$.each( conflicts, function ( index, value ) {
+					eviArray[value.idTies] = GL.get( ['descriptions', value.idTies] );
+					value.trust_view = value.trust_view || 'X';
+					$item = $( '<span>' )
+							.addClass( 'evi-item bg-color-' + Core.getStatus( value.value ).color )
+							.css( {width: width + '%'} )
+							.data( 'idTies', value.idTies )
+							.data( 'el1', id1 )
+							.data( 'el2', id2 )
+							.data( 'category', value.category )
+							.html( value.trust_view );
+
+					if ( maxEviIndex == index ) {
+						$item.addClass( 'evi-item-active' );
+					}
+
+					$span.append( $item );
+				} );
+				$( '.evidences' ).html( $span );
+			}
+		},
+		/**
+		 * 
+		 * @param {string} value Значение.
+		 * @param {string} direction Направление стрелки.
+		 * @param {string} directionSign хз
+		 * @param {string} symbol Иконка между стрелками.
+		 */
+		renderDirection: function ( value, direction, directionSign, symbol ) { // Если value не пришёл, значит это просто обновление текущих параметров. direction и symbol могут отсутствовать при построении, поэтому на них ориентироваться нельзя
+			var
+					$el1 = $( '.el1' ).find( '.preparat-name' ),
+					$el2 = $( '.el2' ).find( '.preparat-name' );
+
+			if ( !( $el1.length && $el2.length ) ) {
+				Core.log( 'el1 or el2 is missing' );
+				return false;
+			}
+
+			var
+					$arrow_a = $( '.direction-arrow-a' ),
+					$arrow_b = $( '.direction-arrow-b' ),
+					$symbol_icon = $( '.symbol-icon' ),
+					center1 = $el1.position().top + ( $el1.height() / 2 ),
+					center2 = $el2.position().top + ( $el2.height() / 2 ),
+					height = Math.abs( center1 - center2 ),
+					top = $el1.position().top + ( $el1.height() / 2 ),
+					border = ( $( '.direction' ).outerHeight() - $( '.direction' ).height() ) / 2,
+					// для противопоказаний
+					interactions_length = $( '.interaction-category' ).length,
+					i,
+					status = Core.getStatus( value ),
+					$current_interaction,
+					direct_center1,
+					direct_center2,
+					direct_height;
+			
+			direction = interactions_length > 0 ? '2' : direction; // если есть противопоказания, ставим стрелку
+
+			if ( value ) {
+				$( '.inter-direct' ).remove();
+				$( '.small-arrow' ).remove();
+			}
+
+			if ( interactions_length > 0 ) {
+				for ( i = 0; i < interactions_length; i++ ) {
+					$current_interaction = $( '.interaction-category:eq(' + i + ')' );
+					direct_center1 = $el1.position().top + ( $el1.height() / 2 );
+					direct_center2 = $current_interaction.position().top + ( $current_interaction.height() / 2 );
+					direct_height = Math.abs( direct_center1 - direct_center2 );
+
+					if ( value ) {
+						var $inter_direct = $( '<div>' ).addClass( 'inter-direct border-color-' + status.color ).css( {'height': direct_height + 'px', 'top': top + 'px'} );
+						this._$el.backInteraction.append( $inter_direct );
+
+						$( '<span>' )
+								.addClass( 'glyphicon glyphicon-play small-arrow color-' + status.color )
+								.appendTo( $( '.direction' ) )
+								.css( {marginTop: direct_height - 10 + 'px', 'fontSize': '9px'} );
+					} else {
+						$( '.inter-direct:eq(' + i + ')' ).css( {'height': direct_height + 'px', 'top': top + 'px'} );
+						$( '.small-arrow:eq(' + i + ')' ).css( {marginTop: direct_height - 10 + 'px'} );
+					}
+				}
+			}
+
+			if ( directionSign === 'b' ) {
+				direction = direction == '1' ? '2' : direction == '2' ? '1' : direction;
+			}
+
+			$( '.direction' ).css( {'height': height + 'px', 'top': top + 'px'} );
+
+			if ( value ) {
+				$( '.el1' ).css( {marginBottom: '30px'} );
+				$( '.el2' ).css( {marginTop: '30px'} );
+				$( '.direction' ).removeClass().addClass( 'direction border-color-' + status.color );
+
+				if ( $arrow_a.length )
+					$arrow_a.remove();
+
+				if ( $arrow_b.length )
+					$arrow_b.remove();
+
+				if ( direction ) {
+					if ( direction != '2' ) {
+						$arrow_a = $( '<span>' ).addClass( 'glyphicon glyphicon-play direction-arrow-a color-' + status.color ).appendTo( $( '.direction' ) ).css( {marginTop: 0 - border - 5 + 'px'} );
+					}
+					if ( direction != '1' ) {
+						$arrow_b = $( '<span>' ).addClass( 'glyphicon glyphicon-play direction-arrow-b color-' + status.color ).appendTo( $( '.direction' ) ).css( {top: ( height - border - 8 ) + 'px'} );
+					}
+				}
+			} else {
+				if ( $arrow_a.length ) {
+					$arrow_a.css( {marginTop: 0 - border - 5 + 'px'} );
+				}
+				if ( $arrow_b.length ) {
+					$arrow_b.css( {top: ( height - border - 8 ) + 'px'} );
+				}
+			}
+
+			if ( symbol !== null ) {
+				if ( $symbol_icon.length ) {
+					$symbol_icon.remove();
+				}
+
+				if ( symbol == '0' ) {
+					$symbol_icon = $( '<span>' ).removeClass().addClass( 'glyphicon glyphicon-question-sign q-icon symbol-icon bg-color-' + status.color );
+				}
+				if ( symbol == '1' ) {
+					$symbol_icon = $( '<span>' ).addClass( 'glyphicon glyphicon-circle-arrow-up symbol-icon q-icon bg-color-' + status.color );
+				}
+				if ( symbol == '2' ) {
+					$symbol_icon = $( '<span>' ).addClass( 'glyphicon glyphicon-circle-arrow-down symbol-icon q-icon bg-color-' + status.color );
+				}
+				if ( symbol == '3' ) {
+					$symbol_icon = $( '<span>' ).addClass( 'glyphicon syringe-icon symbol-icon q-icon bg-color-' + status.color );
+				}
+				if ( $( '.interaction-middle' ).text() !== '' ) {
+					$symbol_icon.addClass( 'symbol-icon-active link' );
+				} else {
+					$symbol_icon.addClass( 'cursor-default' );
+				}
+
+				$symbol_icon.appendTo( $( '.direction' ) );
+				$symbol_icon.css( {top: parseInt( ( height / 2 ) - ( $symbol_icon.height() / 2 ) ) - 3 + 'px'} );
+				$symbol_icon.addClass( 'color-white' );
+			}
+
+			if ( !value ) {
+				if ( $symbol_icon.length ) {
+					$symbol_icon.css( {top: ( height / 2 ) - ( $symbol_icon.height() / 2 ) - 3 + 'px'} );
+				}
+
+			} else if ( value && symbol == null ) {
+				if ( $symbol_icon.length ) {
+					$symbol_icon.remove();
+				}
+			}
+
+			this._$el.backText.height( this._$el.backContent.height() - this._$el.backInteraction.height() - 25 );
+		},
+		/**
+		 * Показывает форму для сообщения об ошибке во взаимодействии.
+		 */
+		report: function () {
+			if ( $( '[name=userOpinionInteractionValue]:checked' ).length || $( '.userOpinionInteractionText' ).val() !== '' ) {
+				Core.sendReport( _.template( tplReportInteraction )( {
+					data: {
+						el1: $( '.el1' ).text().trim(),
+						el2: $( '.el2' ).text().trim(),
+						value: $( '[name=userOpinionInteractionValue]:checked' ).val(),
+						comment: $( '.userOpinionInteractionText' ).val()
+					}, text: Core.getText()
+				} ) );
+				Dispatcher.trigger( 'Alert:show', {
+					title: Core.getText( 'message_sent' ),
+					text: Core.getText( 'message_sent_text_2' )
+				} );
+				Dispatcher.trigger( 'App:toggleListView', 'back_from_report' );
+			} else {
+				Dispatcher.trigger( 'Alert:show', {
+					text: Core.getText( 'write_about_interaction' )
+				} );
+			}
+		},
+		/**
+		 * Исправляет размеры некоторых элементов при изменении окна.
+		 */
+		resizer: function () {
+			var backTextHeight = $( '.back-content' ).outerHeight() - $( '.back-interaction' ).outerHeight() - 10;
+			$( '.back-text' ).outerHeight ( backTextHeight );
+			$( '.back-form' ).outerHeight ( backTextHeight - $( '.back-form-title' ).outerHeight() - 10 );
+		},
+		/**
+		 * При клике на иконку в центре, раскрывает список с ***
+		 * @listens "click .symbol-icon-active"
+		 */
+		onClickArrowCenter: function () {
+			if ( !$( '.interaction-middle' ).hasClass( 'hidden' ) ) {
+				$( '.interaction-middle' ).addClass( 'hidden' );
+				$( '.el1' ).css( {marginBottom: '30px'} );
+				$( '.el2' ).css( {marginTop: '30px'} );
+			} else {
+				$( '.interaction-middle' ).removeClass( 'hidden' );
+				$( '.el1' ).css( {marginBottom: '4px'} );
+				$( '.el2' ).css( {marginTop: '4px'} );
+			}
+			this.renderDirection();
+		}
+	} );
+	return Interactions;
+} );

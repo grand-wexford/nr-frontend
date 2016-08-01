@@ -1,0 +1,332 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	/**
+	 * Модуль для работы с дозировками инфузионных растворов
+	 * @module GroupDosage
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+	var GroupDosage = Backbone.View.extend( {
+		el: 'body',
+		_ed: [
+			{'id': '', 'name': ''},
+			{'id': '169', 'name': 'мкл'},
+			{'id': '168', 'name': 'мл'},
+			{'id': '112', 'name': 'л'}
+		],
+		_currentGroup: false,
+		initialize: function () {
+			Dispatcher.on( 'GroupDosage:saveDosage', this.saveDosage, this );
+			Dispatcher.on( 'GroupDosage:getGroupDosage', this.getGroupDosage, this );
+		},
+		events: {
+			"click .doz-group-icon": "_onClickDozGroupIcon"
+//			"click .doz-tint": "getDosageFromGroup"
+//			"click .doz": "getDosage",
+//			"click .doz-item .text": "onClickDozItem",
+//			"keyup [name=doz]": "onEditD",
+//			"keyup [name=doz_m]": "onEditDM",
+//			"keyup [name=doz_s]": "onEditS",
+//			"keyup [name=doz_sm]": "onEditSM",
+//			"keyup [name=weight]": "onEditWeight",
+//			"change [name=doz-select]": "syncSelect",
+//			"change [name=doz-select-m]": "syncSelect",
+//			"change [name=doz-select-s]": "syncSelect",
+//			"change [name=doz-select-sm]": "syncSelect",
+//			"change [name=frequency]": "onChangeFrequency"
+		},
+		_getGroupElements: function () {
+			var
+					names = GL.get( 'names' ),
+					self = this,
+					g = {};
+
+
+			$.each( names, function ( k, v ) {
+				if ( v.group !== 'undefined' && self._currentGroup == v.group ) {
+					g[k] = v;
+				}
+			} );
+			return g;
+
+		},
+		_calcDoz: function ( from ) {
+			from = from || 'doz'; // group || doz
+
+			var
+					Viwas = $( '[name=doz]' ).attr( 'value' ), // объём раствора, до изменения
+					Vi = $( '[name=doz]' ).val(), // объём раствора
+					Koef = Viwas / Vi, // коэффициент для пересчёта РД
+					names = GL.get( 'names' ),
+					self = this;
+
+			if ( from === 'group' && Viwas !== Vi ) { // изменяется Объём раствора
+				$.each( names, function ( k, v ) {
+					if ( v.group && self._currentGroup == v.group && v.dosage && v.dosage.unit_type === 'volume' && v.dosage.value !== '' ) {
+						GL.set( ['names', k, 'dosage', 'value'], v.dosage.value / Koef );
+					}
+				} );
+			}
+		},
+		_onClickDozGroupIcon: function ( event ) {
+			GL.set( 'fromGroup', $( event.currentTarget ).data( 'groupId' ) );
+			this.getGroupDosage();
+		},
+		groupOpen: function ( groupId ) {
+			this.getGroupDosage( '', groupId );
+			GL.del( 'fromGroup' );
+		},
+		setOptions: function ( self ) {
+//			self._ed
+		},
+		setDefaults: function ( self ) {
+			if ( !GL.get( ['groups', self._currentGroup] ) ) {
+				GL.set( ['groups', self._currentGroup, 'dosage'], {'form': {}, 'method': {}, 'special': ''} );
+
+				var group = this.getGroup( this._currentGroup );
+
+				if ( group && group.length ) {
+					dosage = GL.get( ['names', group[0], 'dosage'] );
+
+					if ( dosage ) {
+						if ( dosage['form'] && dosage['form']['id'] ) {
+							GL.set( ['groups', self._currentGroup, 'dosage', 'form'], dosage['form'] );
+						}
+
+						if ( dosage['method'] && dosage['method']['id'] ) {
+							GL.set( ['groups', self._currentGroup, 'dosage', 'method'], dosage['method'] );
+						}
+
+						if ( dosage['special'] ) {
+							GL.set( ['groups', self._currentGroup, 'dosage', 'special'], dosage['special'] );
+						}
+
+						if ( dosage['unit'] ) {
+							GL.set( ['groups', self._currentGroup, 'dosage', 'unit'], dosage['unit'] );
+						}
+						if ( dosage['unit_id'] ) {
+							GL.set( ['groups', self._currentGroup, 'dosage', 'unit_id'], dosage['unit_id'] );
+						}
+					}
+				}
+			}
+		},
+		getGroupDosage: function () {
+			//var data = GL.get( 'groups' )[this._currentGroup] && GL.get( 'groups' )[this._currentGroup]['dosage'] ? GL.get( 'groups' )[this._currentGroup]['dosage'] : {};
+			Core.request( {
+				url: 'getGroupDosage',
+				data: '',
+				callback: this.onSuccessGetGroupDoz,
+				self: this
+			} );
+		},
+		
+		getForm: function ( data, event, self ) {
+			var form = GL.get( ['groups', this._currentGroup, 'dosage', 'form', 'id'] );
+			
+			if ( !form ) {
+				var group = this.getGroup( this._currentGroup );
+				
+				if ( group && group.length ) {
+					dosage = GL.get( ['names', group[0], 'dosage'] );
+					if ( dosage['form'] && dosage['form']['id'] ) {
+						form = dosage['form']['id'];
+					}
+				}
+
+			}
+
+			return form;
+		},
+		// Дублируются в Group
+		_getGroups: function () {
+			var  names = GL.get( 'names' ),
+				g = {};
+
+			$.each( names, function( k, v ) {
+				if ( typeof v.group !== 'undefined' ) {
+					if ( typeof g[v.group] === 'undefined' ) {
+						g[v.group] = [];
+					}
+					g[v.group].push( k );
+				}
+			});
+			return g;
+		},
+		
+		getGroup: function ( group_id ) {
+			var groups = this._getGroups();
+			return groups[group_id];
+		},
+		
+		onSuccessGetGroupDoz: function ( data, event, self ) {
+			var
+					names = GL.get( 'names' ),
+					$ul = $( '<ul>' ).addClass( "sort list-tree list-hover" ),
+					group_dosage = 0,
+					selected_item = '',
+					selected_item_d = '',
+					selected_item_fr = '',
+					selected_item_m = '',
+					//group_unit = 0,
+					$resultHolder = $( '<div>' ).addClass( "result-holder" ),
+					$GroupDozInfo = _.template( Core.tpls.groupDozInfo )( {data: {group: GL.get( 'fromGroup' )}} ),
+					groupId = GL.get( 'fromGroup' );
+
+			self._currentGroup = groupId;
+			self.setDefaults( self );
+
+			$.each( names, function ( k, value ) {
+				if ( value.group == groupId ) {
+					$div = $( '<div>' ).addClass( "li-inner" );
+					$dozHolder = $( '<span>' ).addClass( "doz-holder" );
+					$textHolder = $( '<span>' ).addClass( "text-holder" ).text( value.name );
+					$afterTextHolder = $( '<span>' ).addClass( "after-text-holder" );
+					$divText = $( '<div>' ).addClass( "text nowrap" ).append( $textHolder );
+
+					if ( value.tn ) {
+						$textHolder.after( "&trade;" );
+					}
+
+					$ButtonDoz = $( '<span>' ).addClass( "glyphicon glyphicon-tint color-lightgray doz link" ).attr( {'title': 'Дозировка и способ применения', 'data-group-id': groupId} ).data( 'groupId', groupId );
+					$divControl = $( '<div>' ).addClass( "control-icons" );
+					$divControl.prepend( $ButtonDoz );
+
+					if ( GL.get( ['names', k, 'dosage'] ) ) {
+						$afterTextHolder.append( Core.formatDoz( k, 1 ) );
+						$textHolder.closest( '.text' ).append( $afterTextHolder );
+						$divText.append( $dozHolder.text( Core.formatDoz( k, 2 ) ) );
+						group_unit = GL.get( ['names', k, 'dosage', 'unit'] );
+
+						if ( !GL.get( ['names', k, 'dosage', 'unit_type'] ) || GL.get( ['names', k, 'dosage', 'unit_type'] ) === 'volume' ) {
+							group_dosage = group_dosage + Number( GL.get( ['names', k, 'dosage', 'value'] ) );
+						}
+					}
+
+					$div.append( $divControl ).append( $divText );
+					$li = $( '<li>' ).append( $div ).data( 'id', k ).attr( 'data-id', k ).after( "\n" );
+					$ul.append( $li );
+				}
+			} );
+
+
+			$resultHolder.append( $ul ).append( $GroupDozInfo );
+			Core.loadTpl( 'secondPage', {title: 'Дозировка и способ применения', titleClass: 'doz-color', subTitle: 'для раствора', result: $resultHolder.html()} );
+
+			if ( group_dosage && group_dosage !== '' ) {
+				$( '.page' ).find( '.group-doz' ).attr( 'value', group_dosage );
+			}
+
+			var $select = $( '.page' ).find( '.frequency' );
+			var $select_d = $( '.page' ).find( '.duration' );
+			var $select_m = $( '.page' ).find( '.method' );
+
+			selected_item = GL.get( ['groups', self._currentGroup, 'dosage', 'unit_id'] ) || selected_item;
+			selected_item_d = GL.get( ['groups', self._currentGroup, 'dosage', 'duration', 'id'] ) || selected_item_d;
+			selected_item_fr = GL.get( ['groups', self._currentGroup, 'dosage', 'frequency', 'id'] ) || selected_item_fr;
+			selected_item_m = GL.get( ['groups', self._currentGroup, 'dosage', 'method', 'id'] ) || selected_item_m; //self.getForm();
+
+			if ( data['frequency'] ) {
+				$select.append( $( '<option>' ).text( '' ).val( '' ) );
+
+				$.each( data['frequency'], function ( k, v ) {
+					$select.append( $( '<option>' ).text( v.name ).val( v.id ).attr( {'data-day': v.day} ).data( 'day', v.day ).prop( 'selected', v.id == selected_item_fr ) );
+				} );
+			}
+
+			if ( data['duration'] ) {
+				$select_d.append( $( '<option>' ).text( '' ).val( '' ) );
+
+				$.each( data['duration'], function ( k, v ) {
+					$select_d.append( $( '<option>' ).text( v.name ).val( v.id ).prop( 'selected', v.id == selected_item_d ) );
+				} );
+			}
+
+			if ( data['method'] ) {
+				$select_m.append( $( '<option>' ).text( '' ).attr( {'value': ''} ) );
+
+				$.each( data['method'], function ( k, v ) {
+					$select_m.append( $( '<option>' ).text( v.name ).val( v.id ).prop( {selected: v.id == selected_item_m} ) );
+				} );
+			}
+
+			$.each( self._ed, function ( k, v ) {
+				$( '.page' ).find( '[name=doz-select]' ).append( $( '<option>' ).text( v.name ).val( v.id ).prop( 'selected', v.id == selected_item ) );
+				$( '.page' ).find( '[name=doz-select-s]' ).append( $( '<option>' ).text( v.name ).val( v.id ).prop( 'selected', v.id == selected_item ) );
+
+				if ( v.name !== '' ) {
+					var namem = v.name + '/кг';
+					var namespeed = v.name + '/мин';
+					var namespeedm = v.name + '/мин/кг';
+				}
+
+				$( '.page' ).find( '[name=doz-select-m]' ).append( $( '<option>' ).text( namem ).val( v.id ).prop( 'selected', v.id == selected_item ) );
+				$( '.page' ).find( '[name=doz-select-sm]' ).append( $( '<option>' ).text( namem ).val( v.id ).prop( 'selected', v.id == selected_item ) );
+				$( '.page' ).find( '[name=doz-select-speed]' ).append( $( '<option>' ).text( namespeed ).val( v.id ).prop( 'selected', v.id == selected_item ) );
+				$( '.page' ).find( '[name=doz-select-speedm]' ).append( $( '<option>' ).text( namespeedm ).val( v.id ).prop( 'selected', v.id == selected_item ) );
+			} );
+
+			GL.set( 'fromGroup', false );
+
+			var user_info = GL.get( 'user_info' );
+			if ( user_info && user_info['weight'] && user_info['weight'] !== '' ) { // это здесь не надо, если возраст вставляется при открытии полей с дозировками
+				$( '.doz-weight-input' ).val( user_info['weight'] );
+			}
+
+			Dispatcher.trigger( 'App:toggleListView', 'group_doz' );
+
+		},
+		saveDosage: function () {
+			var
+					value = $( '[name=doz]' ).val(),
+					$doz_select = $( '[name=doz-select]' ).find( ':selected' ),
+					special = $( '.doz-special' ).val(),
+					frequency = $( '.frequency' ).find( ':selected' ).val() !== '' ? $( '.frequency' ).find( ':selected' ).text() : '',
+					frequency_id = $( '.frequency' ).find( ':selected' ).val() !== '' ? $( '.frequency' ).find( ':selected' ).val() : '',
+					method = $( '.method' ).find( ':selected' ).val() !== '' ? $( '.method' ).find( ':selected' ).text() : '',
+					method_id = $( '.method' ).find( ':selected' ).val() !== '' ? $( '.method' ).find( ':selected' ).val() : '',
+					duration = $( '.duration' ).find( ':selected' ).val() !== '' ? $( '.duration' ).find( ':selected' ).text() : '',
+					duration_id = $( '.duration' ).find( ':selected' ).val() !== '' ? $( '.duration' ).find( ':selected' ).val() : '';
+
+			var dosage = {
+				'frequency': {'name': frequency, 'id': frequency_id},
+				'method': {'name': method, 'id': method_id},
+				'duration': {'name': duration, 'id': duration_id},
+				'value': value,
+				'unit': $doz_select.text(),
+				'unit_id': $doz_select.val(),
+				'special': special
+
+			};
+
+			if ( frequency === '' && method === '' && duration === '' && value === '' && special === '' ) {
+				GL.del( ['groups', this._currentGroup] );
+				return;
+			}
+
+			this._calcDoz( 'group' );
+			if ( !GL.get( ['groups', this._currentGroup, 'dosage'] ) ) {
+				GL.set( ['groups', this._currentGroup, 'dosage'], dosage );
+			}
+//			} else {
+//				GL.set( ['groups', this._currentGroup, 'dosage'], dosage );
+//			}
+
+			GL.set( ['groups', this._currentGroup, 'dosage'], dosage );
+
+			if ( $( '.doz-weight-input' ).val() !== '' ) {
+				GL.set( ['user_info', 'weight'], $( '.doz-weight-input' ).val() );
+				Dispatcher.trigger( 'User:setActive' );
+			}
+		}
+
+	} );
+	return GroupDosage;
+} );

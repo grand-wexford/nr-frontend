@@ -1,0 +1,69 @@
+define( [
+	'js/modules/GL',
+	'js/lang/ru',
+	'js/lang/en'
+], function ( GL, ru, en ) {
+
+	/**
+	 * Модуль для работы с языками
+	 * @module Text
+	 * 
+	 * @requires ru
+	 */
+
+	return {
+		/**
+		 * @property {object} _langs - Перечень установленных языков. 
+		 */
+		_langs: {
+			'ru': ru,
+			'en': en
+		},
+		/**
+		 * Возвращает текст, на языке пользователя.
+		 * @param {type} key Ключ
+		 * @returns {string} Возвращает текст, либо ключ, если текст не найден в текущем языковом файле.
+		 */
+		get: function ( key ) {
+			if ( key === undefined ) {
+				return this._langs[GL.get( 'lang' )];
+			} 
+			
+			var
+					text,
+					GlVar = '',
+					isExists = true,
+					langText = this._langs[GL.get( 'lang' )];
+
+			if ( Array.isArray( key ) ) {
+				$.each( key, function ( k, v ) {
+					GlVar = GlVar + '[\'' + v + '\']';
+					if ( !eval( 'langText' + GlVar ) ) {
+						isExists = false;
+						return false;
+					}
+				} );
+				if ( !isExists ) {
+					text = GlVar;
+				} else {
+					text = eval( 'langText' + GlVar );
+				}
+
+			} else {
+				text = langText[key];
+			}
+
+			return text || key;
+		},
+		/**
+		 * Возвращает сокращённый текст, на языке пользователя.
+		 * @param {type} key Ключ.
+		 * @returns {string} Вернёт полный текст, если нет сокращённого.
+		 * @todo Проверить, что сюда передаётся. Должны передаваться ключи.
+		 */
+		getSOCR: function ( t ) {
+			return this.get( 'SOCR' )[ t ] || t;
+		}
+	};
+
+} );

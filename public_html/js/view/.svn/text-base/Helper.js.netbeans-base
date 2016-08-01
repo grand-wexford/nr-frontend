@@ -1,0 +1,258 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL',
+	'jFocus'
+], function ( Dispatcher, Core, GL, Focusable ) {
+
+	/**
+	 * Модуль для работы со всплывающими подсказками
+	 * @module Helper
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 * @requires Focusable
+	 * 
+	 */
+
+	var Helper = Backbone.View.extend( {
+		el: 'body',
+		events: {
+			"click .turn-off-helper": "turnOff",
+			"keyup input, textarea": "FH"
+		},
+		_$el: {
+			front: $( '.front' )
+		},
+//		_NOT_SHOW_HELPERS: window.localStorage.getItem( "NOT_SHOW_HELPERS" ),
+		/**
+		 * Таймер запуска хелперов.
+		 */
+		_timerFire: false,
+		/**
+		 * Отступы хелперво.
+		 */
+		_helperPadding: 6,
+		/**
+		 * Получены ли хелперы с сервера.
+		 */
+		_helpersGet: false,
+		/**
+		 * Хелперы.
+		 */
+		_helpers: {},
+		/**
+		 * Инициализация.
+		 * @todo Сделать проверку, возможно ли вообще хранить данные в localStorage. Если нет, то функцию хелпера надо отключать.
+		 */
+		initialize: function () {
+			GL.set( 'NOT_SHOW_HELPERS', window.localStorage.getItem( "NOT_SHOW_HELPERS" ) );
+			Dispatcher.on( 'Helper:getHelpers', this.getHelpers, this );
+			Dispatcher.on( 'Helper:clear', this.clear, this );
+			Dispatcher.on( 'Helper:close', this.close, this );
+			Dispatcher.on( 'Helper:FH', this.FH, this );
+		},
+		/**
+		 * Устанавливает единицу помощи, как просмотренную
+		 * @param {string} helpKey Ключ помощи.
+		 */
+		setHelperFired: function ( helpKey ) {
+			var hJSON = Core.getStorageObject( 'firedHelpers' ) || {};
+			hJSON[helpKey] = true;
+			Core.setStorageObject( 'firedHelpers', hJSON );
+
+			if ( Core.objectLength( hJSON ) >= Core.objectLength( this._helpers ) ) {
+				this.turnOff();
+			}
+		},
+		/**
+		 * Выключает помощь.
+		 * @listens "click .turn-off-helper"
+		 */
+		turnOff: function () {
+			window.localStorage.setItem( "NOT_SHOW_HELPERS", "true" );
+			GL.set( 'NOT_SHOW_HELPERS', "true" );
+			this.close();
+		},
+		/**
+		 * Устанавливает для хелперов порядок, в котором их требуется показать.
+		 */
+		sortHelperEl: function () {
+			var sortedElements = [],
+					$el,
+					self = this,
+					hJSON = Core.getStorageObject( 'firedHelpers' ) || {};
+
+			$.each( this._helpers, function ( k, v ) {
+				$el = self.getHelperElement( k );
+				if ( $el.length && !hJSON[k] ) {
+					sortedElements.push( {key: k, 'el': $el} );
+				}
+			} );
+
+			return sortedElements;
+		},
+		/**
+		 * Обнуляет информацию о хелперах и начинает их показ заново.
+		 */
+		clear: function () {
+			window.localStorage.removeItem( 'NOT_SHOW_HELPERS' );
+			window.localStorage.removeItem( 'firedHelpers' );
+			GL.del( 'NOT_SHOW_HELPERS' );
+			/** @private */ this._helpersGet = false;
+			/** @private */ this._helpers = {};
+			this.FH();
+		},
+		/**
+		 * Получает массив хелперов с сервера.
+		 */
+		getHelpers: function () {
+			if ( GL.get( 'NOT_SHOW_HELPERS' ) !== "true" && !this._helpersGet ) {
+				var self = this;
+				Core.request( {
+					url: 'getHelpers',
+					callback: function ( data ) {
+						self._helpers = data;
+						self._helpersGet = true;
+					},
+					loader: false
+				} );
+			}
+		},
+		/**
+		 * Запускает показ хелперов.
+		 * @listens "keyup input, textarea"
+		 */
+		FH: function () {
+			this.close();
+			if ( GL.get( 'NOT_SHOW_HELPERS' ) === "true" ) {
+				return false;
+			}
+
+			if ( !this._helpersGet ) {
+				this.getHelpers();
+			}
+
+			var self = this;
+			clearTimeout( this._timerFire );
+			this._timerFire = setTimeout( function ( ) {
+				if (
+						GL.get( 'NOT_SHOW_HELPERS' ) === "true" || // это нужно, не смотря на то, что уже проверили в начале функции
+						GL.get( 'names' ).length === 0 ||
+						$( '.search-result' ).is( ':visible' ) ||
+						$( '.disease-result' ).is( ':visible' ) ||
+						$( '.menu-holder' ).is( ':visible' ) ||
+						$( '.page-holder' ).is( ':visible' ) ||
+						GL.get( 'isLoading' ) ||
+						GL.get( 'isAlertOpen' )
+						) {
+				} else {
+					var sortedElements = self.sortHelperEl();
+					if ( sortedElements.length > 0 ) {
+						self.focusHelper( sortedElements[0] );
+					}
+				}
+			}, 6000 );
+
+		},
+		/**
+		 * Запускает показ конкретного хелпера.
+		 * @param {array} elementArr Массив с описанием элемента, на котором нужно построить хелпер.
+		 */
+		focusHelper: function ( elementArr ) {
+			var helpKey = elementArr.key;
+
+			if ( !this._helpers[helpKey] ) {
+				this.setHelperFired( helpKey );
+				return false;
+			}
+
+			var $el = elementArr.el,
+					self = this,
+					helpText = this._helpers[ helpKey ],
+					options = {
+						fadeDuration: 100,
+						hideOnClick: false,
+						hideOnESC: false,
+						findOnResize: false,
+						padding: this._helperPadding
+					};
+
+			if ( $el.length ) {
+				$( '.text-view-list-holder' ).scrollTo( $el, 100, {
+					onAfter: function () {
+						Focusable.setFocus( $el, options );
+						self.showHelperBlock( $el, helpText );
+					}
+				} );
+			}
+			this.setHelperFired( helpKey );
+		},
+		/**
+		 * Запускает показ конкретного хелперов.
+		 * @param {object} $el Элемент, на котором нужно построить хелпер.
+		 * @param {string} helpText Текст помощи, который нужно показать для данного элемента.
+		 */
+		showHelperBlock: function ( $el, helpText ) {
+			var top = $el.offset().top + $el.outerHeight() + this._helperPadding,
+					left = 0,
+					$helperBlock,
+					$turnOffBlock,
+					$next = $( '<span>' ).addClass( 'close-helper' ).text( Core.getText( 'close' ) ),
+					$turnOffLink = $( '<span>' ).addClass( 'link' ).text( Core.getText( 'skip_helpers' ) ),
+					topOff = top > this._$el.front.outerHeight() / 2 ? 10 : this._$el.front.outerHeight() - 160,
+					leftOff = 0;
+
+			$( '.helper-block' ).remove();
+			$( '.turn-off-helper' ).remove();
+			$helperBlock = $( '<div>' ).addClass( 'helper-block alert alert-info' ).css( {top: top + 'px', left: left + 'px'} ).html( helpText ).append( $next );
+			$turnOffBlock = $( '<div>' ).addClass( 'turn-off-helper alert alert-warning' ).css( {top: topOff + 'px', left: leftOff + 'px'} ).append( $turnOffLink );
+			$( 'body' ).append( $helperBlock ).append( $turnOffBlock );
+
+			if ( top + $helperBlock.outerHeight() > this._$el.front.outerHeight() ) {
+				var topTop = $el.offset().top - ( this._helperPadding * 2 ) - $helperBlock.outerHeight();
+				$helperBlock.css( {top: topTop + 'px'} );
+			} else {
+				$turnOffBlock.fadeIn();
+			}
+
+			$helperBlock.fadeIn();
+		},
+		/**
+		 * Закрывает открытый хелпер
+		 */
+		close: function () {
+			if ( Focusable.getActiveElement() !== null ) {
+				Focusable.hide();
+				$( '.helper-block' ).fadeOut( 'fast' );
+				$( '.turn-off-helper' ).fadeOut( 'fast' );
+			}
+		},
+		/**
+		 * 
+		 * @param {string} helpKey Ключ помощи.
+		 * @returns {object|false} Возвращает элемент DOM, для которого нужно показать хелпер, либо false, если элемента нет.
+		 */
+		getHelperElement: function ( helpKey ) {
+			var
+					keyArr = helpKey.split( ':' ),
+					$el;
+
+			if ( GL.get( 'state' ) !== keyArr[0] ) {
+				return false;
+			}
+
+			$el = $( '.H-' + keyArr[1] );
+
+			if ( $el ) {
+				return $el.eq( 0 );
+			} else {
+				return false;
+			}
+		}
+	} );
+	return Helper;
+} );

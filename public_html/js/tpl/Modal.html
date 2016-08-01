@@ -1,0 +1,14 @@
+<div class="ui <% if( data.size ) {print(data.size)}else{ print( 'small') }%> <% if( data.jsClass ) {print(data.jsClass)}%> modal">
+	<%if( data.closeIcon !== false ){%>
+	<i class="close icon"></i>
+	<%}%>
+	<div class="header"><%=data.title%></div>
+	<div class="content"><%=data.content%></div>
+	<% if ( Array.isArray( data.buttons ) && data.buttons.length > 0 ) { %>
+	<div class="actions">
+		<% data.buttons.forEach( function(v, k){ %>
+		<div class="ui <%=v.type%> <%=v.class%> button"><%=v.title%></div>
+		<%});%>
+	</div>
+	<% } %>
+</div>

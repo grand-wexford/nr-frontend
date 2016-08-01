@@ -1,0 +1,84 @@
+<div class="group-doz-info-doz">
+	<div class="row">
+		<div class="col-xs-5"><span class="doz-info-title"><%=text.input_method%>:</span></div>
+		<div class="col-xs-7"><select name="method" class="method dosage-list"></select></div>
+	</div>
+</div>
+
+<div class="group-doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.volume_solution%></span></div>
+		<div class="col-xs-5"><input type="text" name="doz" value="" class="doz-input-notfull group-doz"><select class="doz-select" name="doz-select"></select>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.per_body_weight%> (<input type="text" class="doz-weight-input" placeholder="<%=text.weight%>" name="weight" maxlength="6"><span class="small"><%=text.kg%></span>)</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_m" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-m">	</select></div>
+	</div>
+</div>
+
+
+<div class="group-doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.input_speed%></span></div>
+		<div class="col-xs-5"><input type="text" name="doz_speed" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-speed"></select></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.per_body_weight%> (<input type="text" class="doz-weight-input" placeholder="<%=text.weight%>" name="weight" maxlength="6"><span class="small"><%=text.kg%></span>)</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_speedm" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-speedm"></select></div>
+	</div>
+</div>
+
+
+
+
+<div class="group-doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.dosing_frequency%>:</span></div>
+		<div class="col-xs-5"><select name="frequency" class="frequency dosage-list"></select></div>
+	</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<div class="group-doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.amount_daily_dose%>:</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_s" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-s"></select></div>
+	</div>
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.per_body_weight%> (<input type="text" class="doz-weight-input" placeholder="<%=text.weight%>" name="weight" maxlength="6"><span class="small"><%=text.kg%></span>)</span></div>
+		<div class="col-xs-5"><input type="text" name="doz_sm" value="" class="doz-input-notfull"><select class="doz-select" name="doz-select-sm"></select></div>
+	</div>
+</div>
+
+
+
+<div class="group-doz-info-doz">
+	<div class="row">
+		<div class="col-xs-7"><span class="doz-info-title"><%=text.dosing_duration%>:</span></div>
+		<div class="col-xs-5"><select name="duration" class="duration dosage-list pull-right"></select></div>
+	</div>
+</div>
+
+
+
+
+
+
+
+
+
+<div class="clear"></div>
+<div class="doz-info-special">
+	<span class="doz-info-title"><%=text.special_instructions%></span>
+	<textarea name="doz-special" class="doz-special"></textarea>
+</div>

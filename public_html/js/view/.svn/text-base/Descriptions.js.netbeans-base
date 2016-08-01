@@ -1,0 +1,83 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	
+	/**
+	 * Описания препаратов.
+	 * @module Descriptions
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+	
+	var Descriptions = Backbone.View.extend( {
+		el: 'body',
+		/**
+		 * Индекс элемента.
+		 */
+		_index: null,
+		/**
+		 * События.
+		 */
+		events: {
+			"click .has-desc": "getDescriptions"
+		},
+		/**
+		 * Инициализация.
+		 * Устанавливаем descClass = has-desc, что означает, кто названия препаратов теперь будут кликабельны.
+		 */
+		initialize: function(){
+			GL.set( 'descClass', 'has-desc' );
+		},
+
+		/**
+		 * При клике на препарат, для отображения описания.
+		 * @param {object} event
+		 * @listens "click .has-desc"
+		 */
+		getDescriptions: function ( event ) {
+			this._index = Core.getIndex( event );
+			
+			Core.request( {
+				url: 'getDescriptions',
+				data: {medicament: $( event.currentTarget ).text(), tn: GL.getTN( this._index ) },
+				callback: this.onSuccessGetDescriptions,
+				self: this,
+				event: event
+			} );
+		},
+		/**
+		 * При успешном ответе сервера на getDescriptions.
+		 * @param {object} data Данные с сервера.
+		 * @param {object} event Событие.
+		 * @param {object} self this
+		 */
+		onSuccessGetDescriptions: function ( data, event, self ) {
+			var  $title,
+				$li,
+				$ul = $( '<ul>' ).addClass( "sort list-group" ),
+				$text;
+
+			$.each( data, function ( key, value ) {
+				$title = $( '<div>' ).addClass( 'desc-key' ).html( value.name );
+				$text = $( '<div>' ).addClass( 'desc-value' ).html( value.text );
+
+				$li = $( '<li>' ).append( $title ).append( $text ).addClass( "desc-item list-group-item list-group-item-padding" );
+				$ul.append( $li );
+				$title.append( '&nbsp;' ).append( $( '<span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span>' ) );
+			} );
+			
+			Core.loadTpl( 'secondPage', { title: Core.getText( 'drug_description' ), titleClass: 'desc-color', subTitle: GL.get( ['names', self._index, 'name'] ), result: $ul.html() } );
+			
+			if ( $ul.html() !== '' ) {
+				Dispatcher.trigger( 'App:toggleListView', 'desc' );
+			}
+		}
+	} );
+	return Descriptions;
+} );

@@ -1,0 +1,101 @@
+/* global Backbone, _ */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	/**
+	 * Модуль для работы с меню
+	 * @module Menu
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+	var Menu = Backbone.View.extend( {
+		el: 'body',
+		/**
+		 * События.
+		 */
+		events: {
+			"click .menu-back": "onClickMenuHide",
+			"click .menu-item": "onClickMenuItem",
+			"click .menu-button": "onClickMenu"
+		},
+		
+		_$el: {
+			menuButton: $( '.menu-button' ),
+			menuCover: $( '.menu-cover' ),
+			menuHolder: $( '.menu-holder' ),
+			page: $( '.page' )
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'Menu:onClickMenuHide', this.onClickMenuHide, this );
+			$( '.menu-button' ).show();
+		},
+		/**
+		 * При клике на пункт меню.
+		 * @param {object} event
+		 * @listens "click .menu-item"
+		 */
+		onClickMenuItem: function ( event ) {
+			var menuItem = $( event.currentTarget ).data( 'id' );
+
+			switch ( menuItem ) {
+				case 'PX':
+					GL.set( 'PX', null );
+					window.localStorage.removeItem( 'PX' );
+					window.location.reload();
+					break;
+
+				case 'help':
+					Core.loadPage( 'Help', this._$el.page );
+					break;
+
+				case 'review':
+					Core.loadPage( 'Report', this._$el.page );
+					break;
+
+				case 'agreement':
+					Core.loadPage( 'Agreement', this._$el.page );
+					break;
+
+				case 'helpers':
+					Dispatcher.trigger( 'Helper:clear' );
+					break;
+			}
+			this.menuHide();
+		},
+		/**
+		 * При скрытии меню.
+		 * @listens "click .menu-back"
+		 * @listens "Menu:onClickMenuHide"
+		 */
+		onClickMenuHide: function () {
+			Dispatcher.trigger( 'App:toggleListView', 'back_to_view' ); // @todo проверить
+			this.menuHide();
+			Dispatcher.trigger( 'Helper:FH' );
+		},
+		/**
+		 * Прячет меню.
+		 */
+		menuHide: function () {
+			this._$el.menuHolder.slidePage( 'hide', 'left' );
+			this._$el.menuCover.fadeOut();
+			
+		},
+		/**
+		 * При открытии меню.
+		 * @listens "click .menu-button"
+		 */
+		onClickMenu: function () {
+			this._$el.menuCover.fadeIn();
+			Core.loadPage( 'Menu', this._$el.menuHolder, null, 'left', { profile: GL.get( 'profile' ) } );
+		}
+	});
+	return Menu;
+} );

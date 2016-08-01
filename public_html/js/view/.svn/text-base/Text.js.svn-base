@@ -1,0 +1,124 @@
+define( [
+	'js/modules/GL'
+//	'js/lang/ru',
+//	'js/lang/en'
+], function ( GL ) {
+
+	/**
+	 * Модуль для работы с языками
+	 * @module Text
+	 * 
+	 * @requires ru
+	 */
+
+	return {
+		/**
+		 * @property {object} _langs - Перечень установленных языков. 
+		 */
+		_langs: {
+			'ru': {},
+			'en': {}
+		},
+		/**
+		 * Дубликат из Core. Нужен т.к. языки загружаются до Core
+		 * @todo пересмотреть
+		 * @returns {boolean}
+		 */
+		isMobile: function () {
+			return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test( navigator.userAgent );
+		},
+		/**
+		 * Дубликат из Core. Нужен т.к. языки загружаются до Core
+		 * @todo пересмотреть
+		 * @returns {String}
+		 */
+		getAPIServer: function () {
+//			return 'http://umkb.socmedica.com/api/';
+
+			var domainArr = document.domain.split( '.' ),
+					domain = domainArr.slice( 1 ).join( '.' );
+
+			if ( this.isMobile() ) {
+				return 'http://umkb.socmedica.com/api/';
+			}
+
+			if ( document && document.domain && document.domain !== '' ) {
+				if ( domain === 'pharmexpert.socmedica.net' ) {
+					return 'http://' + domainArr[0] + '.' + 'umkb.socmedica.net/api/';
+				}
+			}
+
+			return 'proxyAPI.php?path=';
+		},
+		getInterface: function () {
+			var params = {};
+			var self = this;
+
+
+			if ( GL.get( 'active_language' ) ) {
+				params.active_language = GL.get( 'active_language' );
+			}
+
+			if ( GL.get( 'testKey' ) ) {
+				params.security_key = GL.get( 'testKey' );
+			}
+
+			$.ajax( {
+				url: this.getAPIServer() + 'getInterface',
+				type: 'POST',
+				dataType: "json",
+				data: params,
+				success: function ( data ) {
+					self._langs[params.active_language] = data;
+				}
+			} );
+		},
+		/**
+		 * Возвращает текст, на языке пользователя.
+		 * @param {type} key Ключ
+		 * @returns {string} Возвращает текст, либо ключ, если текст не найден в текущем языковом файле.
+		 */
+		get: function ( key ) {
+			if ( key === undefined ) {
+				this.getInterface();
+				return this._langs[GL.get( 'active_language' )];
+			}
+
+			var
+					text,
+					GlVar = '',
+					isExists = true,
+					langText = this._langs[GL.get( 'active_language' )];
+
+			if ( Array.isArray( key ) ) {
+				$.each( key, function ( k, v ) {
+					GlVar = GlVar + '[\'' + v + '\']';
+					if ( !eval( 'langText' + GlVar ) ) {
+						isExists = false;
+						return false;
+					}
+				} );
+				if ( !isExists ) {
+					text = GlVar;
+				} else {
+					text = eval( 'langText' + GlVar );
+				}
+
+			} else {
+				text = langText[key];
+			}
+
+			return text || key;
+		},
+		/**
+		 * Возвращает сокращённый текст, на языке пользователя.
+		 * @param {type} key Ключ.
+		 * @returns {string} Вернёт полный текст, если нет сокращённого.
+		 * @todo Проверить, что сюда передаётся. Должны передаваться ключи.
+		 */
+		getSOCR: function ( t ) {
+			return this.get( 'SOCR' )[ t ] || t;
+		}
+	};
+
+} );

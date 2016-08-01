@@ -1,0 +1,7 @@
+<!--<button type="button" class="close page-close" aria-label="Close"><span aria-hidden="true">&times;</span></button>-->
+<div class="help-title">Пожалуйста опишите проблему</div>
+<BR><BR>
+<div class='review-text'>
+	<textarea style="width: 100%;" cols="15" class="report-text"></textarea>
+	<button type="button" class="btn btn-primary pull-right report-send">Отправить</button>
+</div>

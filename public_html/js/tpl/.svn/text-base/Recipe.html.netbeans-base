@@ -1,0 +1,29 @@
+							<div class="print-holder no-mobile">
+								<button type="button" class="btn btn-default btn-xs print"><span class="glyphicon glyphicon-print " aria-hidden="true"></span> Печать</button>
+							</div>
+							<div class="recipe-title"><%=title%></div>
+							<div class='recipe-list-holder'>
+								<div class='recipe-header'>
+									<span class="recipe-header-row"><span class="recipe-header-row-title">ФИО пациента: </span><span  class="recipe-patient-name"><input class="recipe-patient-fio" type="text" value="" tabindex="1"></span></span>
+									<span class="recipe-header-row recipe-row-separator"><span class="recipe-header-row-title">Возраст пациента: </span><span  class="recipe-patient-name"><input class="recipe-age" type="text" value="<%=data.age%>" tabindex="2"></span></span>
+
+									<span class="recipe-header-row"><span class="recipe-header-row-title">ФИО врача: </span><span  class="recipe-medic-name"><input class="recipe-doctor-fio" type="text" value="" tabindex="3"></span></span>
+									<span class="recipe-header-row"><span class="recipe-header-row-title">Название ЛПУ: </span><span  class="recipe-medic-name"><input class="recipe-lpu" type="text" value="" tabindex="4"></span></span>
+								</div>
+								<div class='recipe-list'><%=result%></div>
+							</div>
+							<div class='recipe-bottom'>
+								<span class="recipe-sign"><span class="recipe-sign-text">подпись</span></span>
+								<span class="recipe-mp">м.п.</span>
+								<span class="recipe-data-holder"><span class="recipe-header-row-title">Дата:</span> <span  class="recipe-patient-name recipe-date"><%=data.date%></span></span>
+								
+								<div class="recipe-buttons">
+									<div class="btn-group btn-group-justified" role="group" aria-label="">
+										<div class="btn-group" role="group">
+											<button type="button" class="btn btn-sm btn-primary to-mnn">Заменить на действующие вещества</button>
+										</div>
+									</div>
+								</div>							
+								
+								<span class="recipe-copyright">Pharm Expert<sup>&reg;</sup><BR>Socmedica (www.socmedica.com)</span>
+							</div>

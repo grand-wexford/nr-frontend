@@ -1,0 +1,201 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	/**
+	 * Всплывающее окно с сообщениями
+	 * @module Alert
+	 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 * 
+	 */
+	var Alert = Backbone.View.extend( {
+		el: 'body',
+		/**
+		 * События.
+		 */
+		events: {
+			"click .alert-close": "onClickAlertClose",
+			"click .alert-wait": "onClickAlertWait",
+			"click .alert-cancel-loading": "onClickAlertCancelLoading",
+			"click .alert-ignore": "onClickAlertIgnore",
+			"click .alert-send": "onClickAlertSend"
+		},
+		_$el: {
+			front: $( '.front' )
+		},
+		/**
+		 * Инициализация.
+		 */
+		initialize: function () {
+			Dispatcher.on( 'Alert:show', this.show, this );
+			Dispatcher.on( 'Alert:hide', this.hide, this );
+		},
+		/**
+		 * При нажатии "Закрыть".
+		 * @listens "click .alert-close"
+		 */
+		onClickAlertClose: function () {
+			this.hide( 'up' );
+		},
+		/**
+		 * При нажатии "Подождать".
+		 * @listens "click .alert-wait"
+		 */
+		onClickAlertWait: function () {
+			this.hide( 'up', function () {
+				Core.loading();
+			} );
+		},
+		/**
+		 * При нажатии "Прервать загрузку".
+		 * @listens "click .alert-cancel-loading"
+		 */
+		onClickAlertCancelLoading: function () {
+			this.hide( 'down', function () {
+				Core.loading( false );
+			} );
+		},
+		/**
+		 * При нажатии "Игнорировать противопоказания".
+		 * @listens "click .alert-ignore"
+		 */
+		onClickAlertIgnore: function () {
+			this.hide( 'up', function () {
+				Dispatcher.trigger( 'App:toggleListView', 'recipe' );
+			} );
+		},
+		/**
+		 * При нажатии "Отправить рецепт".
+		 * @param {object} event
+		 * @listens "click .alert-send"
+		 */
+		onClickAlertSend: function ( event ) {
+			var email = $( '.email' ).val() || '';
+
+			if ( email === '' ) {
+				$( '.send-email-form' ).addClass( 'has-error' );
+				$( '.send-email-form' ).find( '.help-block' ).text( Core.getText( 'enter_email' ) );
+				return;
+			}
+
+			if ( !Core.isValidEmail( email ) ) {
+				$( '.send-email-form' ).addClass( 'has-error' );
+				$( '.send-email-form' ).find( '.help-block' ).text( Core.getText( 'incorrect_email' ) );
+				return;
+			}
+
+			//this.hide( 'up' );
+			$( event.currentTarget ).attr( 'disabled', 'disabled' );
+			Dispatcher.trigger( 'Recipe:send' );
+		},
+		/**
+		 * Скрыть всплывающее окно.
+		 * @param {string} direction направление скрытия окна (up|down)
+		 * @param {function} callback
+		 */
+		hide: function ( direction, callback ) {
+			var self = this;
+			callback = callback || function () {
+			};
+			var moveTo = direction === 'up' ? '-300px' : '1200px'; // @todo отвязать от конкретных чисел
+
+			if ( $( '.alert' ).length > 1 ) {
+				$( '.alert:last' ).animate( {top: moveTo}, function () {
+					$( this ).fadeOut();
+					$( '.alert:last' ).remove();
+					callback();
+				} );
+				return;
+			}
+
+			$( '.alert' ).animate( {top: moveTo}, function () {
+				$( '.message-holder' ).fadeOut( '700', function(){ $( '.message-holder' ).remove(); } );
+				$( '.alert' ).remove();
+				callback();
+			} );
+			$( '.message-cover' ).fadeOut( '700', function(){ $( '.message-cover' ).remove(); } );
+			GL.set( 'isAlertOpen', false );
+		},
+		/**
+		 * Показ всплывающего окна
+		 * @param {string} data Описание всплывающего окна.
+		 */
+		show: function ( data ) {
+			if ( !data.add ) {
+				$( '.alert' ).remove();
+			}
+
+			var
+					$h,
+					i,
+					$btn,
+					$messageHolder = $( '<div>' ).addClass( 'message-holder' ).outerHeight( this._$el.front.outerHeight() ),
+					$messageCover = $( '<div>' ).addClass( 'message-cover' ).outerHeight( this._$el.front.outerHeight() ),
+					$btn_holder = $( '<div>' ).addClass( 'col-md-12 alert-buttons' );
+
+			$h = $( '<div>' )
+					.addClass( 'alert alert-' + ( data.color || 'info' ) )
+					.append( '<span class="message-title">' + ( data.title || '' ) + '</span>' )
+					.append( '<span class="message">' + ( data.text || '' ) + '</span>' );
+
+			if ( !data.buttons ) {
+				data.buttons = [];
+				data.buttons.push( {
+					text: 'Ок',
+					color: 'primary',
+					class: 'alert-close'
+				} );
+			}
+
+			i = 0;
+			$.each( data.buttons, function ( k, v ) {
+				$btn = $( '<button>' ).addClass( 'btn' ).attr( {'type': 'button'} );
+
+				if ( data.buttons.length === 1 || i > 0) {
+					$btn.addClass( 'pull-right' );
+				} else {
+					$btn.addClass( 'pull-left' );
+				}
+
+				if ( v.text ) {
+					$btn.text( v.text );
+				}
+				if ( v.color ) {
+					$btn.addClass( 'btn-' + v.color );
+				}
+				if ( v.class ) {
+					$btn.addClass( v.class );
+				}
+				if ( v.data ) {
+					$.each( data.buttons, function ( k, v ) {
+						$btn.data( k, v );
+					} );
+				}
+
+				$btn_holder.append( $btn );
+				i++;
+			} );
+
+			$h.append( $btn_holder );
+			$messageHolder.appendTo( '.sf-conteiner' ).append( $h ).show();
+			$messageCover.appendTo( '.sf-conteiner' ).fadeIn();
+
+			// fix width on large screens
+			if ( $h.css( 'width' ) === $h.css( 'maxWidth' ) ) {
+				var blockWidth = $h.css( 'width' ).replace( /(px)/g, "" );
+				$h.css( {'left': ( window.innerWidth / 2 ) - ( blockWidth / 2 ) + 'px'} );
+			}
+
+			var blockHeight = $h.css( 'height' ).replace( /(px)/g, "" );
+			$h.animate( {top: ( window.innerHeight / 2 ) - ( blockHeight / 2 ) - ( window.innerHeight / 10 ) + 'px'} );
+			GL.set( 'isAlertOpen', true );
+		}
+	} );
+	return Alert;
+} );

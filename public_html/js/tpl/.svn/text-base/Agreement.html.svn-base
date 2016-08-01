@@ -1,0 +1,6 @@
+<!--<button type="button" class="close page-close" aria-label="Close"><span aria-hidden="true">&times;</span></button>-->
+<div class="help-title"><%=text.agreement%></div>
+
+<div class='help-text'>
+	<%=text.agreement_text_page%>
+</div>

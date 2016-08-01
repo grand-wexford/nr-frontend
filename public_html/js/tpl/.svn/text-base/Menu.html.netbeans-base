@@ -1,0 +1,17 @@
+<div class="nav-holder">
+	<span class="glyphicon glyphicon-menu-left menu-back link" aria-hidden="true"></span>
+</div>
+<div class="menu-title"><%=text.options%></div>
+
+<div class='menu-text'>
+	<div class="list-group">
+		<a href="#" class="list-group-item list-group-item-padding2 menu-item" data-id="help"><%=text.help%></a>
+		<a href="#" class="list-group-item list-group-item-padding2 menu-item" data-id="PX"><%=text.change_interface%></a>
+		<% if( data.profile !== 'pro' ) { %>
+		<a href="#" class="list-group-item list-group-item-padding2 menu-item" data-id="helpers"><%=text.show_helpers%></a>
+		<a href="#" class="list-group-item list-group-item-padding2 menu-item" data-id="review"><%=text.post_review%></a>
+<!--		<a href="#" class="list-group-item list-group-item-padding2 disabled">О приложении</a>-->
+		<a href="#" class="list-group-item list-group-item-padding2 menu-item" data-id="agreement"><%=text.agreement%></a>
+		<% } %>
+	</div>
+ </div>

@@ -1,0 +1,76 @@
+define( [], function ( ) {
+
+	/**
+	 * Описание профилей
+	 * @module Profiles
+	 */
+
+	return {
+		/**
+		 * @property {string} fliper			- Эффект оборота.
+		 * @property {string} helpers			- Подсказки.
+		 * @property {string} menu			- Меню.
+		 * @property {string} descriptions		- Описания препаратов.
+		 * @property {string} interactions_page	- Страница взаимодействий (обратная сторона).
+		 * @property {string} button_set		- Кнопка "Назначить", вместо "Выписать".
+		 * @property {string} button_user		- Наличие кнопки "Данные пациента".
+		 * @property {string} setbutton			- Наличие кнопки "Назначить/Выписать".
+		 * @property {string} ask_rating		- При выходе спрашивать понравилось ли приложение.
+		 * @property {string} dosage			- Наличие кнопки "дозировки".
+		 * @property {string} change			- Наличие кнопки "замена".
+		 * @property {string} latin_name		- Отображение латинского названия.
+		 * @property {string} groups			- Растворы.
+		 * @property {string} PX				- Вариант интерфейса D - доктор, P - пациент.
+		 
+		 */
+		'standart': {
+			'fliper': '1',
+			'helpers': '1',
+			'menu': '1',
+			'descriptions': '1',
+			'interactions_page': '1',
+			'button_set': '0',
+			'button_user': '1',
+			'setbutton': '1',
+			'ask_rating': '1',
+			'dosage': '1',
+			'change': '1',
+			'latin_name': '0',
+			'groups': '1',
+			'PX': 'D'
+		},
+		'mgmsu': {
+			'fliper': '0',
+			'helpers': '0',
+			'menu': '0',
+			'descriptions': '0',
+			'interactions_page': '0',
+			'button_set': '0',
+			'button_user': '0',
+			'setbutton': '0',
+			'ask_rating': '0',
+			'dosage': '0',
+			'change': '0',
+			'latin_name': '0',
+			'groups': '0',
+			'PX': 'D'
+		},
+		'pro': {
+			'fliper': '0',
+			'helpers': '0',
+			'menu': '1',
+			'descriptions': '1',
+			'interactions_page': '1',
+			'button_set': '1',
+			'button_user': '1',
+			'setbutton': '1',
+			'ask_rating': '0',
+			'dosage': '1',
+			'change': '1',
+			'latin_name': '0',
+			'groups': '1',
+			'PX': 'D'
+		}
+	};
+
+} );

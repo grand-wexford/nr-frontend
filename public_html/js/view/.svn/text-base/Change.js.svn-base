@@ -1,0 +1,179 @@
+/* global Backbone */
+
+define( [
+	'dispatcher',
+	'core',
+	'js/modules/GL'
+], function ( Dispatcher, Core, GL ) {
+	
+	/**
+	 * Замена препаратов
+	 * @module Change
+	 * 
+	 * @requires Dispatcher
+	 * @requires Core
+	 * @requires GL
+	 */
+	
+	var Change = Backbone.View.extend( {
+		el: 'body',
+		/**
+		 * Индекс элемента.
+		 */
+		_index: null,
+		/**
+		 * Инициализация.
+		 */
+		initialize: function(){
+		},
+		
+		/**
+		 * События.
+		 */
+		events: {
+			"click .change-item .text": "onClickChangeItem",
+			"click .change": "getChangePreparation"
+		},
+		
+		/**
+		 * При клике на иконку "Замена"
+		 * @param {object} event
+		 * @listens "click .change"
+		 */
+		getChangePreparation: function ( event ) {
+			var url;
+			this._index = Core.getIndex( event );
+
+			if ( GL.get( 'PX' ) === 'D' ) {
+				url = 'getChangePreparation';
+			} else {
+				url = 'getAlternative';
+			}
+
+			Core.request( {
+				url: url,
+				data: {
+					medicaments: Core.prepearMedicaments(),
+					change: GL.get( ['names', this._index, 'name'] ),
+					value: GL.get( ['elements', this._index, 'value_max'] ),
+					user_info: GL.get( 'user_info' )
+				},
+				callback: this.onSuccessGetChange,
+				self: this
+			} );
+		},
+		
+		/**
+		 * При успешном ответе сервера на getChangePreparation.
+		 * @param {object} data Данные с сервера.
+		 * @param {object} event Событие.
+		 * @param {object} self this
+		 */
+		onSuccessGetChange: function ( data, event, self ) {
+			var	i = 0,
+				status,
+				$ul = $( '<ul>' ).addClass( "sort list-group" ),
+				$li,
+				$div,
+				$divText,
+				$plus,
+				$empty,
+				$changeItems,
+				alertColor,
+				$name;
+
+			$.each( data, function ( index, value ) {
+				i++;
+				
+				status = Core.getStatus( value.value );
+				alertColor = status[ value.value ] ? status[ value.value ].color : 'success';
+				$name = $( '<span>' ).html( value.name );
+				$div = $( '<div>' ).addClass( "li-inner" );
+				$plus = $( '<div class="expand-icon"><span class="glyphicon glyphicon-plus expand link"></span></div>' );
+				$empty = $( '<div class="expand-icon"><span class="glyphicon glyphicon-holder"></span></div>' );
+				$divText = $( '<div>' ).addClass( "text" ).append( $name ).data( 'name', value.name );
+
+				if ( value.latin_name !== "" && value.latin_name !== undefined )
+					$divText.append( " (" + value.latin_name + ")" );
+
+				$div.append( $divText );
+				$li = $( '<li>' ).append( $div ).after( "\n" ).addClass( "change-item list-group-item list-group-item-padding list-group-item-" + alertColor + ' H-change_item' );
+
+				if ( value.medicaments && value.medicaments.length > 0 ) {
+					$div.prepend( $plus );
+					$changeItems = self.changeItems( value.medicaments );
+
+					if ( GL.get( 'PX' ) === 'P' ) {
+						$changeItems.show();
+						$plus.find( '.glyphicon-plus' ).removeClass( 'glyphicon-plus' ).addClass( 'glyphicon-minus' );
+					}
+
+					$li.append( $changeItems );
+				} else {
+					$div.prepend( $empty );
+				}
+				$ul.append( $li );
+			} );
+
+			if ( i === 0 ) {
+				$ul.append( $( '<li>' ).append( '<p class="bg-danger" style="padding: 10px; margin: 10px;"> <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span> '+Core.getText( 'no_change' )+'</p>' ) );
+			}
+
+			Core.loadTpl( 'secondPage', { title: Core.getText( 'change_drug' ), titleClass: 'change-color', subTitle: GL.get( ['names', self._index, 'name'] ), result: $ul.html() }, 'change-holder' );
+
+			if ( GL.get( 'PX' ) === 'D' ) {
+				Dispatcher.trigger( 'Helper:FH' );
+			}
+			
+			Dispatcher.trigger( 'App:toggleListView', 'changing' );
+		},
+		/**
+		 * 
+		 * @param {object} medicaments Массив с препаратами одного ДВ.
+		 * @returns {object|String}
+		 * @todo Проверить почему возвращается строка и заменить на объект.
+		 */
+		changeItems: function ( medicaments ) {
+			var	i,
+				$ul = $( '<ul>' ).addClass( "sort list-tree list-hover list-group medicaments-list" ),
+				$li,
+				$div,
+				$divText,
+				$name;
+
+			$.each( medicaments, function ( index, value ) {
+				i++;
+				$name = $( '<span>' ).html( value.name );
+				$div = $( '<div>' ).addClass( "li-inner" );
+				$divText = $( '<div>' ).addClass( "text" ).append( $name ).data( 'name', value.name );
+
+				if ( value.latin_name !== "" && value.latin_name !== undefined ) {
+					$divText.append( " (" + value.latin_name + ")" );
+				}
+
+				$div.append( $divText );
+				$li = $( '<li>' ).append( $div ).after( "\n" ).addClass( "change-item list-group-item list-group-item-padding" );
+				$ul.append( $li );
+			} );
+
+			if ( i === 0 ) {
+				return '';
+			}
+
+			return $ul;
+		},
+		/**
+		 * При клике на препарат в списке замены.
+		 * @param {object} event
+		 * @listens "click .change-item .text"
+		 * @returns {Boolean}
+		 */
+		onClickChangeItem: function ( event ) {
+			event.preventDefault();
+			GL.set( ['names', this._index, 'name'], Core.strip( $( event.currentTarget ).find( 'span' ).html() ) ); // $( event.currentTarget ).data( 'name' )
+			Dispatcher.trigger( 'App:toggleListView', 'after_change_item' );
+			return true;
+		}
+	} );
+	return Change;
+} );

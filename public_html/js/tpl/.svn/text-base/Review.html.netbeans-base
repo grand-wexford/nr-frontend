@@ -1,0 +1,8 @@
+<!--<button type="button" class="close page-close" aria-label="Close"><span aria-hidden="true">&times;</span></button>-->
+<div class="help-title">Вам нравится Pharm Expert?</div>
+<BR><BR>
+<div class='review-text'>
+	<button type="button" class="btn btn-success btn-lg btn-block review-like"><span class="glyphicon glyphicon-heart" aria-hidden="true"></span> Оставить отзыв</button>
+	<button type="button" class="btn btn-default btn-lg btn-block review-report"><span class="glyphicon glyphicon-ban-circle color-danger" aria-hidden="true"></span> Сообщить о проблеме</button>
+</div>
+<!--Мне нравится!-->
