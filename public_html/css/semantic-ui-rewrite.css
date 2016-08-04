@@ -1,0 +1,7 @@
+.ui.odnoklassniki.button {
+    background-color: #ee8208;
+    color: #FFF;
+}
+.ui.odnoklassniki.button:hover {
+    background-color: #ee7808;
+}
