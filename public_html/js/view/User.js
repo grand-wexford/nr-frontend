@@ -4,12 +4,8 @@ define([
 	'dispatcher',
 	'core',
 	'js/view/GL',
-	'js/view/UserWidget',
-	'text!js/tpl/AuthForm.html',
-	'text!js/tpl/RegistrationForm.html',
-	'text!js/tpl/RecoverForm.html',
-	'text!js/tpl/Modal.html'
-], function (Dispatcher, Core, GL, UserWidget, tplAuthForm, tplRegistrationForm, tplRecoverForm, tplModal) {
+	'js/view/UserWidget'
+], function (Dispatcher, Core, GL, UserWidget) {
 	/**
 	 * Пользователь
 	 * @module User
@@ -18,8 +14,14 @@ define([
 	 * @requires Core
 	 * @requires GL
 	 */
-	var User = Backbone.View.extend({
+	var User = Core.View.extend({
 		el: 'body',
+		_templateUrl: {
+			authForm: 'js/tpl/AuthForm.html',
+			registrationForm: 'js/tpl/RegistrationForm.html',
+			recoverForm: 'js/tpl/RecoverForm.html',
+			modal: 'js/tpl/Modal.html'
+		},
 		/**
 		 * События
 		 */
@@ -27,7 +29,8 @@ define([
 			"click .js-user-login": "_onClickLogin",
 			"click .js-user-logout": "_onClickLogout",
 			"click .js-user-registration": "_onClickRegistration",
-			"click .js-user-recover": "_onClickRecover"
+			"click .js-user-recover": "_onClickRecover",
+			"click .js-login-social button": "_onClickSocialLoginButton"
 		},
 		/**
 		 * Инициализация
@@ -35,6 +38,8 @@ define([
 		initialize: function () {
 			Dispatcher.on( 'User:auth', this.auth, this );
 			
+			this.loadTemplate();
+
 			this.UserWidget = new UserWidget();
 			this.render();
 		},
@@ -51,7 +56,20 @@ define([
 		},
 		/**
 		 * Получаем с сервера информацию о пользователе по токену
+		 * @param {event} event
 		 */
+		_onClickSocialLoginButton: function (event) {
+			if ($(event.currentTarget).hasClass('facebook')) {
+				window.open('https://www.facebook.com/dialog/oauth?client_id=953736151309590&redirect_uri=https://soundstream.media/facebook&response_type=token&scope=email', '', 'width=600,height=450');
+			} else if ($(event.currentTarget).hasClass('twitter')) {
+				console.log('twitter');
+			} else if ($(event.currentTarget).hasClass('odnoklassniki')) {
+				console.log('odnoklassniki');
+			} else if ($(event.currentTarget).hasClass('vk')) {
+				window.open('http://oauth.vk.com/authorize?client_id=4604288&scope=offline&display=popup&redirect_uri=https://soundstream.media/vk&response_type=token', '', 'width=500,height=400');
+			}
+		},
+		
 		_getUserData: function () {
 			var self = this;
 			Core.request({
@@ -73,7 +91,7 @@ define([
 					}
 					// При любом ответе отображаем виджет
 					// @todo Не очень хорошо, что это здесь. Логически не вписывается.
-					self.UserWidget.render();
+					this.UserWidget.render();
 				}
 			});
 		},
@@ -199,6 +217,7 @@ define([
 			// запускаем модальное окно
 			$('.ui.modal.js-registration-modal').modal({
 				duration: 300,
+				autofocus: false,
 				transition: 'fade down'
 			}).modal('show');
 
@@ -219,7 +238,7 @@ define([
 									{
 										type: 'empty',
 										prompt: 'Пожалуйста, введите Имя'
-									},
+									}
 								]
 							},
 							email: {
@@ -275,14 +294,6 @@ define([
 		 * При клике на кнопку "Забыли пароль?"
 		 */
 		_onClickRecover: function () {
-			// Рисуем каптчу
-			// @todo sitekey сейчас с soundstream.media , надо менять на нерадио
-			grecaptcha.render('reCaptcha', {
-				'sitekey': '6Lc76gsTAAAAAD3X7MMGSbZDt5nnex1ao1De4tiA',
-				'callback': this._verifyCaptchaCallback,
-				'theme': 'light'
-			});
-			
 			// Запускаем модальное окно
 			$('.ui.modal.js-recover-modal').modal({
 				duration: 300,
@@ -291,6 +302,16 @@ define([
 
 			// Сюда собираются ошибки сервера. Прячем слой, т.к. он мог быть отображён при прошлом входе.
 			$('.js-error-message').not(':has(.hidden)').addClass('hidden');
+
+			// Рисуем каптчу
+			// @todo sitekey сейчас с soundstream.media , надо менять на нерадио
+			if ($('#reCaptcha').is(':empty')) {
+				grecaptcha.render('reCaptcha', {
+					'sitekey': '6Lc76gsTAAAAAD3X7MMGSbZDt5nnex1ao1De4tiA',
+					'callback': this._verifyCaptchaCallback,
+					'theme': 'light'
+				});
+			}
 
 			// Сбрасываем форму (она может быть заполнена с прошлого раза), и вносим данные для валидации
 			$('.ui.js-recover-form')
@@ -312,7 +333,7 @@ define([
 										prompt: 'Пожалуйста, введите корректный E-mail'
 									}
 								]
-							},
+							}
 						}
 					});
 		},
@@ -322,7 +343,7 @@ define([
 		 */
 		_onClickLogin: function () {
 			// запускаем модальное окно
-			$('.ui.modal.js-login-modal').modal({
+			$('.js-login-modal').modal({
 				duration: 300,
 				transition: 'fade down'
 			}).modal('show');
@@ -331,7 +352,7 @@ define([
 			$('.js-error-message').not(':has(.hidden)').addClass('hidden');
 
 			// Сбрасываем форму (она может быть заполнена с прошлого раза), и вносим данные для валидации
-			$('.ui.js-login-form')
+			$('.js-login-form')
 					.form('reset')
 					.form({
 						inline: true,
@@ -368,36 +389,36 @@ define([
 		 * @description Добавляем на страницу необходимые модулю элементы
 		 * @returns {User_L11.UserAnonym$1}
 		 */
-		render: function () {
-			this.authModal = _.template(tplModal)({
+
+		_render: function () {
+			this.authModal =  this._template.modal({
 				data: {
 					title: 'Вход на сайт',
-					content: _.template(tplAuthForm)(),
-					jsClass: 'js-login-modal',
-					size: ''
+					content: this._template.authForm(),
+					jsClass: 'js-login-modal'
 				}
 			});
-			this.registrationModal = _.template(tplModal)({
+			
+			this.registrationModal = this._template.modal({
 				data: {
 					title: 'Регистрация',
-					content: _.template(tplRegistrationForm)(),
-					jsClass: 'js-registration-modal',
-					size: ''
+					content: this._template.registrationForm(),
+					jsClass: 'js-registration-modal'
 				}
 			});
-			this.recoverModal = _.template(tplModal)({
+			this.recoverModal = this._template.modal({
 				data: {
 					title: 'Регистрация',
-					content: _.template(tplRecoverForm)(),
-					jsClass: 'js-recover-modal',
-					size: ''
+					content: this._template.recoverForm(),
+					jsClass: 'js-recover-modal'
 				}
 			});
 			this.$el
 					.append(this.authModal)
 					.append(this.registrationModal)
 					.append(this.recoverModal);
-
+			
+			//this._onClickRegistration();
 			return this;
 		}
 	});

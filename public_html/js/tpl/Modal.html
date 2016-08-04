@@ -1,4 +1,4 @@
-<div class="ui <% if( data.size ) {print(data.size)}else{ print( 'small') }%> <% if( data.jsClass ) {print(data.jsClass)}%> modal">
+<div class="ui <% if( data.size ) {print(data.size)}else{ print( 'small') }%> <% ( data.jsClass && print(data.jsClass) ) %> modal">
 	<%if( data.closeIcon !== false ){%>
 	<i class="close icon"></i>
 	<%}%>

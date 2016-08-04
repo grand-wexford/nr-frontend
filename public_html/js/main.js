@@ -29,5 +29,5 @@ requirejs.config({
 });
 
 requirejs(["js/app"], function (App) {
-	window.bTask = new App();
+	new App();
 });

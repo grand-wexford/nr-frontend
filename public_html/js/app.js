@@ -7,8 +7,6 @@ define( [
 	'core',
 	'js/view/User',
 	'js/view/GL'
-
-
 ], function ( Dispatcher, Core, User, GL ) {
 	/**
 	 * Главный модуль приложения
@@ -21,7 +19,7 @@ define( [
 	 * @requires GL
 	 */
 
-	var App = Backbone.View.extend( {
+	var App = Core.View.extend( {
 		/**
 		 * Инициализация приложения.
 		 * Подгрузка модулей.
@@ -33,7 +31,7 @@ define( [
 			// new User().auth();
 			// Но пока это единственное место с триггером, так что оставлено для примера.
 			Dispatcher.trigger( 'User:auth' );
-		},
+		}
 	} );
 	return App;
 } );

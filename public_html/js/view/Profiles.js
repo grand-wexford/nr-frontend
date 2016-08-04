@@ -12,10 +12,10 @@ define( [], function ( ) {
 		 * @property {string} level - Уровень доступа
 		 */
 		'user': {
-			'level': '1',
+			'level': '1'
 		},
 		'guest': {
-			'level': '0',
+			'level': '0'
 		}
 	};
 
